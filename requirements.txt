@@ -7,6 +7,7 @@ PyMuPDF
 chromadb
 sentence-transformers
 requests
+beautifulsoup4
 python-telegram-bot
 yt-dlp
 openai-whisper
