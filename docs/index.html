@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Content Intelligence Agent</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f7f7f5;
+      --surface: #ffffff;
+      --border: #e8e8e4;
+      --text: #1a1a1a;
+      --muted: #6b6b6b;
+      --accent: #2563eb;
+      --accent-light: #eff6ff;
+      --green: #16a34a;
+      --green-light: #f0fdf4;
+      --yellow: #d97706;
+      --yellow-light: #fffbeb;
+      --purple: #7c3aed;
+      --purple-light: #f5f3ff;
+      --red: #dc2626;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 32px 48px;
+    }
+    .header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+    .header p {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 14px;
+      max-width: 540px;
+    }
+    .last-updated {
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 12px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .live-dot {
+      display: inline-block;
+      width: 7px; height: 7px;
+      background: var(--green);
+      border-radius: 50%;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    /* ── Main ── */
+    .main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 36px 48px;
+    }
+
+    /* ── Section titles ── */
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    /* ── Stats grid ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 22px;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+    .stat-value {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -1px;
+      color: var(--text);
+    }
+    .stat-sub {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* ── Two-col layout ── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+
+    /* ── Table card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th {
+      text-align: left;
+      padding: 10px 20px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    .title-cell { font-weight: 500; max-width: 300px; }
+    .title-cell small { display: block; color: var(--muted); font-weight: 400; font-size: 11px; margin-top: 2px; }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-new      { background: var(--green-light);  color: var(--green); }
+    .badge-related  { background: var(--yellow-light); color: var(--yellow); }
+    .badge-covered  { background: var(--purple-light); color: var(--purple); }
+    .badge-yt       { background: #fef2f2; color: var(--red); }
+    .badge-nl       { background: var(--green-light);  color: var(--green); }
+    .badge-granola  { background: var(--yellow-light); color: var(--yellow); }
+    .badge-link     { background: var(--purple-light); color: var(--purple); }
+    .badge-pdf      { background: var(--accent-light); color: var(--accent); }
+
+    /* ── Concepts sidebar ── */
+    .concepts-list {
+      padding: 16px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .concept-tag {
+      background: var(--accent-light);
+      color: var(--accent);
+      border: 1px solid #bfdbfe;
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    /* ── Pipeline ── */
+    .pipeline-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 28px 32px;
+      margin-bottom: 40px;
+    }
+    .pipeline-flow {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+    .pipeline-step {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 18px;
+      font-size: 13px;
+      text-align: center;
+    }
+    .pipeline-step strong { display: block; font-size: 13px; font-weight: 600; }
+    .pipeline-step span   { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .pipeline-arrow {
+      color: var(--muted);
+      font-size: 18px;
+      padding: 0 10px;
+    }
+
+    /* ── Source breakdown ── */
+    .breakdown-list {
+      padding: 16px 20px;
+    }
+    .breakdown-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      font-size: 13px;
+    }
+    .breakdown-label { width: 90px; color: var(--muted); }
+    .breakdown-bar-wrap { flex: 1; background: var(--bg); border-radius: 4px; height: 8px; overflow: hidden; }
+    .breakdown-bar { height: 8px; border-radius: 4px; background: var(--accent); transition: width 0.6s ease; }
+    .breakdown-count { width: 28px; text-align: right; font-weight: 600; }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 32px;
+      font-size: 12px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── Loading state ── */
+    .loading { color: var(--muted); font-size: 13px; padding: 20px; text-align: center; }
+
+    @media (max-width: 900px) {
+      .header { padding: 24px; }
+      .main { padding: 24px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .two-col { grid-template-columns: 1fr; }
+      .header-inner { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div>
+      <h1>Content Intelligence Agent</h1>
+      <p>Personal AI learning system — ingests YouTube videos, newsletters, and meeting notes, scores novelty against existing knowledge, and builds a structured knowledge base.</p>
+    </div>
+    <div class="last-updated" id="last-updated">
+      <span class="live-dot"></span>Loading...
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- Stats -->
+  <div class="section-title">Knowledge Base</div>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Total KB Entries</div>
+      <div class="stat-value" id="stat-total">—</div>
+      <div class="stat-sub">across all sources</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Added This Week</div>
+      <div class="stat-value" id="stat-week">—</div>
+      <div class="stat-sub">new entries</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Reading List Queue</div>
+      <div class="stat-value" id="stat-queue">—</div>
+      <div class="stat-sub">pending review</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Concepts Indexed</div>
+      <div class="stat-value" id="stat-concepts">—</div>
+      <div class="stat-sub">unique topics</div>
+    </div>
+  </div>
+
+  <!-- Recent entries + top concepts -->
+  <div class="section-title">Recent Activity</div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-header">Latest KB Entries</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Source</th>
+            <th>Novelty</th>
+            <th>Added</th>
+          </tr>
+        </thead>
+        <tbody id="entries-body">
+          <tr><td colspan="4" class="loading">Loading entries...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      <div class="card">
+        <div class="card-header">Top Concepts</div>
+        <div class="concepts-list" id="concepts-list">
+          <span class="loading">Loading...</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">Sources Breakdown</div>
+        <div class="breakdown-list" id="breakdown-list">
+          <span class="loading">Loading...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pipeline -->
+  <div class="section-title">How It Works</div>
+  <div class="pipeline-card">
+    <div style="font-size:14px; color:var(--muted); max-width:680px;">
+      Content is ingested from multiple sources, extracted into structured knowledge using Claude, scored for novelty against the existing KB using semantic embeddings, and staged in a Reading List before being promoted to the permanent Knowledge Base.
+    </div>
+    <div class="pipeline-flow">
+      <div class="pipeline-step">
+        <strong>Sources</strong>
+        <span>YouTube · Newsletters<br>Granola · Web Links</span>
+      </div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step">
+        <strong>Ingest Queue</strong>
+        <span>Notion DB<br>auto-polled every 2 days</span>
+      </div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step">
+        <strong>Claude Extraction</strong>
+        <span>Chunk → Haiku per chunk<br>→ Sonnet/Opus aggregate</span>
+      </div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step">
+        <strong>Novelty Score</strong>
+        <span>ChromaDB semantic dedup<br>NEW · RELATED · COVERED</span>
+      </div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step">
+        <strong>Reading List</strong>
+        <span>Staged for review<br>mark Read to promote</span>
+      </div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step">
+        <strong>Knowledge Base</strong>
+        <span>Permanent store<br>embedded + indexed</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Built for HBS Navigating Your Worth · Content Intelligence Agent · Data updates automatically via GitHub Actions
+</footer>
+
+<script>
+  function sourceBadge(type) {
+    const map = {
+      YouTube: 'badge-yt', Newsletter: 'badge-nl', Granola: 'badge-granola',
+      Link: 'badge-link', PDF: 'badge-pdf', Notes: 'badge-link'
+    };
+    return `<span class="badge ${map[type] || 'badge-link'}">${type}</span>`;
+  }
+
+  function verdictBadge(v) {
+    if (!v) return '—';
+    const map = { NEW: 'badge-new', RELATED: 'badge-related', COE: 'badge-covered', COVERED: 'badge-covered' };
+    return `<span class="badge ${map[v.toUpperCase()] || 'badge-related'}">${v}</span>`;
+  }
+
+  function formatDate(s) {
+    if (!s) return '—';
+    const d = new Date(s);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  fetch('data.json')
+    .then(r => r.json())
+    .then(data => {
+      // Last updated
+      const lu = document.getElementById('last-updated');
+      const d = new Date(data.last_updated);
+      lu.innerHTML = `<span class="live-dot"></span>Updated ${d.toLocaleDateString('en-US', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}`;
+
+      // Stats
+      document.getElementById('stat-total').textContent    = data.stats.total_kb_entries ?? '—';
+      document.getElementById('stat-week').textContent     = data.stats.added_this_week ?? '—';
+      document.getElementById('stat-queue').textContent    = data.stats.reading_list_queue ?? '—';
+      document.getElementById('stat-concepts').textContent = data.stats.unique_concepts ?? '—';
+
+      // Recent entries
+      const tbody = document.getElementById('entries-body');
+      if (data.recent_entries && data.recent_entries.length) {
+        tbody.innerHTML = data.recent_entries.map(e => `
+          <tr>
+            <td class="title-cell">
+              ${e.title}
+              <small>${(e.summary || '').substring(0, 80)}${e.summary && e.summary.length > 80 ? '…' : ''}</small>
+            </td>
+            <td>${sourceBadge(e.source_type)}</td>
+            <td>${verdictBadge(e.verdict)}</td>
+            <td style="white-space:nowrap; color:var(--muted)">${formatDate(e.date_added)}</td>
+          </tr>`).join('');
+      } else {
+        tbody.innerHTML = '<tr><td colspan="4" class="loading">No entries yet</td></tr>';
+      }
+
+      // Top concepts
+      const cl = document.getElementById('concepts-list');
+      if (data.top_concepts && data.top_concepts.length) {
+        cl.innerHTML = data.top_concepts.map(c => `<span class="concept-tag">${c}</span>`).join('');
+      } else {
+        cl.innerHTML = '<span class="loading">No concepts yet</span>';
+      }
+
+      // Source breakdown
+      const bl = document.getElementById('breakdown-list');
+      const bd = data.source_breakdown || {};
+      const max = Math.max(...Object.values(bd), 1);
+      if (Object.keys(bd).length) {
+        bl.innerHTML = Object.entries(bd)
+          .filter(([,v]) => v > 0)
+          .sort(([,a],[,b]) => b - a)
+          .map(([k,v]) => `
+            <div class="breakdown-row">
+              <span class="breakdown-label">${k}</span>
+              <div class="breakdown-bar-wrap">
+                <div class="breakdown-bar" style="width:${Math.round(v/max*100)}%"></div>
+              </div>
+              <span class="breakdown-count">${v}</span>
+            </div>`).join('');
+      } else {
+        bl.innerHTML = '<span class="loading">No data yet</span>';
+      }
+    })
+    .catch(() => {
+      document.getElementById('last-updated').textContent = 'Data unavailable';
+    });
+</script>
+</body>
+</html>

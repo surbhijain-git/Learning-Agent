@@ -1,0 +1,9 @@
+# Add one URL per line. Lines starting with # are ignored.
+# Run: python ingest/from_links.py
+# Then: python db_seeder.py raw_inputs/links/
+https://www.seattletimes.com/opinion/ai-is-getting-dangerously-good-at-political-persuasion/
+https://www.anthropic.com/research/measuring-model-persuasiveness
+https://sloanreview.mit.edu/article/validating-llm-output-prepare-to-be-persuasion-bombed/?utm_source=sfmc&utm_medium=email&utm_campaign=02-05-2026-Media-Coverage&utm_term=Validating+LLM+Output%3f+Prepare+to+Be+%e2%80%98Persuasion+Bombed%e2%80%99&utm_id=796031
+https://www.oneusefulthing.org/p/centaurs-and-cyborgs-on-the-jagged
+
+

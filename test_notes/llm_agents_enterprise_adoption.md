@@ -1,0 +1,9 @@
+# Why LLM Agents Are Stalling in Enterprise: A Reliability Problem Masquerading as a Trust Problem
+
+The enterprise AI narrative of 2024 and 2025 focused heavily on trust — specifically, that businesses were reluctant to deploy LLM agents because they didn't trust the outputs. The proposed solutions were explainability tools, human-in-the-loop checkpoints, and governance frameworks. Most of these have been built. Adoption has still not inflected.
+
+The more accurate diagnosis is a reliability problem. The issue is not that enterprises distrust AI outputs in principle — they routinely act on imperfect information from human analysts. The issue is that LLM agents fail in unpredictable ways. A human analyst who is unreliable fails on recognizable patterns; you learn to double-check their work on certain topics. An LLM agent that hallucinates fails non-deterministically, which makes it impossible to build a mental model of its failure modes. Unpredictability is more operationally dangerous than imperfection.
+
+The enterprises that have achieved real deployment velocity share a common pattern: they have constrained the agent's action space to domains where failures are recoverable and visible. The agent drafts, humans approve. The agent flags, humans decide. The agent summarizes, humans verify on high-stakes decisions. This is not timidity — it is sound system design that matches automation to the cost of error.
+
+The implication for AI product builders is that reliability — specifically the predictability of failure modes — matters more than raw capability. A model that is slightly less capable but fails in legible, consistent ways is more deployable than a more capable model that surprises users. Enterprises are not irrational; they are optimizing for operational stability, and unpredictable agents destabilize operations even when they are usually correct.

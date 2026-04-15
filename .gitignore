@@ -1,0 +1,29 @@
+# Secrets
+.env
+*.env
+
+# Python
+__pycache__/
+*.pyc
+
+# Large raw files (stay local)
+raw_transcripts/
+raw_inputs/
+Talks/
+
+# macOS
+.DS_Store
+
+# Claude Code memory
+.claude/
+
+# Office docs
+*.docx
+*.pptx
+
+# chroma_db IS committed (GitHub Actions needs it for dedup)
+# chroma_db/
+
+# Logs and exports stay local
+logs/
+exports/

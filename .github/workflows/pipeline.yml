@@ -1,0 +1,79 @@
+name: Pipeline + Site Update
+
+on:
+  schedule:
+    - cron: "0 7 * * *"      # daily at 7am UTC — newsletter + granola queue
+    - cron: "0 8 1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31 * *"  # every ~2 days — ingest queue poll
+  workflow_dispatch:          # manual trigger from GitHub UI
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('requirements.txt') }}
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get install -y ffmpeg
+          pip install -r requirements.txt
+
+      - name: Run newsletter sync (fetch Gmail → add to Ingest Queue)
+        env:
+          ANTHROPIC_API_KEY:        ${{ secrets.ANTHROPIC_API_KEY }}
+          NOTION_TOKEN:             ${{ secrets.NOTION_TOKEN }}
+          NOTION_DB_ID:             ${{ secrets.NOTION_DB_ID }}
+          NOTION_READING_LIST_ID:   ${{ secrets.NOTION_READING_LIST_ID }}
+          NOTION_INGEST_QUEUE_ID:   ${{ secrets.NOTION_INGEST_QUEUE_ID }}
+          NOTION_PARENT_PAGE_ID:    ${{ secrets.NOTION_PARENT_PAGE_ID }}
+          NEWSLETTER_EMAIL:         ${{ secrets.NEWSLETTER_EMAIL }}
+          NEWSLETTER_EMAIL_PASSWORD: ${{ secrets.NEWSLETTER_EMAIL_PASSWORD }}
+        run: python newsletter_sync.py
+        continue-on-error: true   # don't fail the whole run if Gmail is flaky
+
+      - name: Run granola sync (Talks/ → Ingest Queue)
+        env:
+          NOTION_TOKEN:             ${{ secrets.NOTION_TOKEN }}
+          NOTION_DB_ID:             ${{ secrets.NOTION_DB_ID }}
+          NOTION_READING_LIST_ID:   ${{ secrets.NOTION_READING_LIST_ID }}
+          NOTION_INGEST_QUEUE_ID:   ${{ secrets.NOTION_INGEST_QUEUE_ID }}
+        run: python granola_sync.py
+        continue-on-error: true
+
+      - name: Process Ingest Queue → Reading List
+        env:
+          ANTHROPIC_API_KEY:        ${{ secrets.ANTHROPIC_API_KEY }}
+          NOTION_TOKEN:             ${{ secrets.NOTION_TOKEN }}
+          NOTION_DB_ID:             ${{ secrets.NOTION_DB_ID }}
+          NOTION_READING_LIST_ID:   ${{ secrets.NOTION_READING_LIST_ID }}
+          NOTION_INGEST_QUEUE_ID:   ${{ secrets.NOTION_INGEST_QUEUE_ID }}
+        run: python ingest_queue.py poll --once
+
+      - name: Generate site data (Notion → docs/data.json)
+        env:
+          NOTION_TOKEN:             ${{ secrets.NOTION_TOKEN }}
+          NOTION_DB_ID:             ${{ secrets.NOTION_DB_ID }}
+          NOTION_READING_LIST_ID:   ${{ secrets.NOTION_READING_LIST_ID }}
+        run: python generate_site_data.py
+
+      - name: Commit updated data.json and chroma_db
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/data.json chroma_db/ logs/ exports/ || true
+          git diff --staged --quiet || git commit -m "chore: auto-update pipeline data [skip ci]"
+          git push

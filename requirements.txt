@@ -1,0 +1,13 @@
+anthropic
+notion-client==2.2.1
+python-dotenv
+youtube-transcript-api
+pytube
+PyMuPDF
+chromadb
+sentence-transformers
+requests
+python-telegram-bot
+yt-dlp
+openai-whisper
+ffmpeg-python
