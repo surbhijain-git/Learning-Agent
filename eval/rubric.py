@@ -13,8 +13,9 @@ WEIGHTS = {
     "extraction_fidelity":  0.25,
     "insight_depth":        0.30,
     "novelty_calibration":  0.20,
-    "structural_quality":   0.15,
-    "strategic_relevance":  0.10,
+    "pipeline_integrity":   0.10,
+    "structural_quality":   0.10,
+    "strategic_relevance":  0.05,
 }
 
 DIMENSION_DESCRIPTIONS = {
@@ -40,10 +41,16 @@ DIMENSION_DESCRIPTIONS = {
         "Concrete learnings: named tools, frameworks, concepts — not vague. "
         "Key concepts: precise topic tags."
     ),
+    "pipeline_integrity": (
+        "Did the entry move correctly through the pipeline? "
+        "Source processed from Ingest Queue (not stuck), "
+        "entry appeared in Reading List if NEW/RELATED (not if COVERED), "
+        "and all required fields (Source_Type, Date_Added, Source) are populated."
+    ),
     "strategic_relevance": (
         "Is this content genuinely useful for roles in AI strategy, GTM strategy, "
         "product strategy, or strategy consulting? "
-        "Would Surbhi (HBS MBA, target: AI/strategy roles) find this worth keeping?"
+        "Would someone targeting AI/strategy roles find this worth keeping?"
     ),
 }
 
@@ -71,10 +78,15 @@ SCORING_ANCHORS = {
         3: "Most fields present but one or two are weak. Title is acceptable. Summary is present but could be tighter. At least 2 specific claims. Learnings include some named concepts.",
         5: "All fields complete and precise. Title is a short topic label (3-6 words). Summary is 2-3 specific sentences. 3-5 claims that are non-obvious. Learnings name specific tools, frameworks, percentages, or model names. Key concepts are precise tags.",
     },
+    "pipeline_integrity": {
+        1: "Entry is missing required fields (Source_Type, Date_Added, or Source blank), OR a NEW/RELATED entry has no Reading List counterpart, OR a COVERED entry incorrectly appears in the Reading List.",
+        3: "Required fields are populated but one pipeline step misbehaved — e.g., entry reached KB but Reading List status was not updated, or Source field is a filename rather than a meaningful identifier.",
+        5: "All required fields populated. Entry moved correctly: Ingest Queue item was processed and removed, NEW/RELATED entry appears in Reading List, COVERED entry does not. No stuck or orphaned items.",
+    },
     "strategic_relevance": {
-        1: "Content is tangential or irrelevant to AI strategy, GTM strategy, product strategy, or consulting. Would not be useful in any of Surbhi's target roles.",
+        1: "Content is tangential or irrelevant to AI strategy, GTM strategy, product strategy, or consulting. Would not be useful in any strategy or advisory role.",
         3: "Generally relevant domain but too high-level to be actionable in a specific role. Good background knowledge but not decision-relevant.",
-        5: "Directly applicable to Surbhi's target roles (AI strategy, GTM, product, consulting). A hiring manager or senior colleague in those roles would recognize it as substantive domain knowledge.",
+        5: "Directly applicable to AI strategy, GTM, product, or consulting roles. A senior colleague in those roles would recognize it as substantive, citable domain knowledge.",
     },
 }
 
@@ -102,6 +114,7 @@ FEW_SHOT_EXAMPLES = [
             "extraction_fidelity": 5,
             "insight_depth": 4,
             "novelty_calibration": 5,
+            "pipeline_integrity": 5,
             "structural_quality": 5,
             "strategic_relevance": 5,
         },
@@ -109,6 +122,7 @@ FEW_SHOT_EXAMPLES = [
             "extraction_fidelity": "Accurately reflects the source's core argument on tiered deployment.",
             "insight_depth": "Tiering logic is specific and non-obvious; cost % is estimated but reasonable.",
             "novelty_calibration": "KB had no prior entries on model selection strategy — correctly NEW.",
+            "pipeline_integrity": "All required fields populated, Reading List entry present, queue item removed.",
             "structural_quality": "All fields precise. Title is a clean topic label. Claims are specific.",
             "strategic_relevance": "Directly applicable to AI product strategy and build decisions.",
         },
@@ -136,6 +150,7 @@ FEW_SHOT_EXAMPLES = [
             "extraction_fidelity": 2,
             "insight_depth": 1,
             "novelty_calibration": 2,
+            "pipeline_integrity": 2,
             "structural_quality": 2,
             "strategic_relevance": 3,
         },
@@ -143,6 +158,7 @@ FEW_SHOT_EXAMPLES = [
             "extraction_fidelity": "Too generic — doesn't reflect any specific source argument.",
             "insight_depth": "All claims are obvious. Nothing a strategy consultant couldn't already know.",
             "novelty_calibration": "These concepts are definitely covered in KB. Should be COVERED not NEW.",
+            "pipeline_integrity": "Source field is blank and Date_Added missing — required fields not populated.",
             "structural_quality": "Title is a sentence fragment. Claims are boilerplate. No named tools or frameworks.",
             "strategic_relevance": "AI is relevant domain but nothing actionable here.",
         },
@@ -170,6 +186,7 @@ FEW_SHOT_EXAMPLES = [
             "extraction_fidelity": 4,
             "insight_depth": 3,
             "novelty_calibration": 2,
+            "pipeline_integrity": 4,
             "structural_quality": 3,
             "strategic_relevance": 4,
         },
@@ -177,6 +194,7 @@ FEW_SHOT_EXAMPLES = [
             "extraction_fidelity": "Reasonably accurate but somewhat surface-level.",
             "insight_depth": "Orchestration-as-moat is a real insight; task decomposition is fairly well-known.",
             "novelty_calibration": "KB has multiple entries on orchestration and AI infrastructure — should be RELATED not NEW.",
+            "pipeline_integrity": "Required fields populated and Reading List entry present, but Source field shows filename not a clean identifier.",
             "structural_quality": "Claims are decent but learnings are too vague. No named frameworks or tools.",
             "strategic_relevance": "Relevant to AI strategy and product roles.",
         },

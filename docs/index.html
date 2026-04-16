@@ -100,7 +100,7 @@
 
     /* ── Stats grid ── */
     .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 40px; }
-    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 22px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 22px; min-height: 110px; display: flex; flex-direction: column; justify-content: space-between; }
     .stat-label { font-size: 12px; color: var(--muted); font-weight: 500; margin-bottom: 8px; }
     .stat-value { font-size: 32px; font-weight: 700; letter-spacing: -1px; color: var(--text); }
     .stat-sub   { font-size: 12px; color: var(--muted); margin-top: 4px; }
@@ -305,8 +305,8 @@
   </div>
 
   <div class="tab-bar">
-    <button class="tab-btn active" onclick="switchTab('dashboard', this)">Dashboard</button>
-    <button class="tab-btn" onclick="switchTab('about', this)">About</button>
+    <button class="tab-btn active" onclick="switchTab('about', this)">About</button>
+    <button class="tab-btn" onclick="switchTab('dashboard', this)">Live Dashboard</button>
     <button class="tab-btn" onclick="switchTab('setup', this)">Setup Guide</button>
     <button class="tab-btn" onclick="switchTab('sample', this)">Sample Output</button>
   </div>
@@ -315,7 +315,7 @@
 <!-- ═══════════════════════════════════════════════════════════════
      TAB 1 — DASHBOARD
 ════════════════════════════════════════════════════════════════ -->
-<div id="tab-dashboard" class="tab-panel active">
+<div id="tab-dashboard" class="tab-panel">
 <div class="main">
 
   <div class="section-title">Knowledge Base</div>
@@ -379,7 +379,7 @@
         <div class="pnode pnode-source">▶ YouTube<span>manual paste → queue</span></div>
         <div class="pnode pnode-source">🔗 Web Links<span>manual paste → queue</span></div>
         <div class="pnode pnode-source">✉ Newsletters<span>Gmail auto-fetch<br><span class="sched-badge"><span class="sched-dot"></span>daily</span></span></div>
-        <div class="pnode pnode-source">📝 Granola Notes<span>Talks/ folder scan<br><span class="sched-badge"><span class="sched-dot"></span>daily</span></span></div>
+        <div class="pnode pnode-source">📝 Granola Notes<span>auto-synced to queue<br><span class="sched-badge"><span class="sched-dot"></span>daily</span></span></div>
       </div>
     </div>
     <div class="pipeline-connector">
@@ -440,13 +440,73 @@
     </div>
   </div>
 
+  <!-- Eval Agent -->
+  <div class="section-title">Quality Evaluation Loop</div>
+  <div class="pipeline-card" style="padding:28px 32px;">
+    <p class="pipeline-desc" style="margin-bottom:24px;">
+      A separate Judge LLM (Sonnet) scores every KB entry on 5 dimensions against an anchored rubric — running independently from the extraction pipeline so it can catch failures the extractor wouldn't self-report.
+    </p>
+    <div style="display:grid; grid-template-columns:1fr 80px 1fr; gap:16px; align-items:start;">
+
+      <!-- Main pipeline summary -->
+      <div>
+        <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:var(--muted); margin-bottom:12px;">Main Agent (Haiku extractor)</div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div class="pnode pnode-source" style="text-align:left; min-width:0;">📥 Ingest Queue<span>YouTube · Newsletter · Granola · PDF</span></div>
+          <div style="font-size:11px; color:var(--muted); padding-left:8px;">↓ chunk → extract → embed</div>
+          <div class="pnode pnode-extract" style="text-align:left; min-width:0;">⚡ Haiku Extraction<span>INSIGHT + LEARN per chunk</span></div>
+          <div style="font-size:11px; color:var(--muted); padding-left:8px;">↓ novelty score</div>
+          <div class="pnode pnode-dedup" style="text-align:left; min-width:0;">🔍 ChromaDB Novelty<span>NEW · RELATED · COVERED</span></div>
+          <div style="font-size:11px; color:var(--muted); padding-left:8px;">↓ write to KB</div>
+          <div class="pnode pnode-kb" style="text-align:left; min-width:0;">🗂 Knowledge Base entry<span>structured Notion page</span></div>
+        </div>
+      </div>
+
+      <!-- Arrow -->
+      <div style="display:flex; align-items:center; justify-content:center; padding-top:120px;">
+        <div style="text-align:center; color:var(--muted); font-size:11px; font-weight:600; line-height:1.6;">
+          <div style="font-size:20px;">→</div>
+          KB entry<br>sent to<br>judge
+        </div>
+      </div>
+
+      <!-- Eval agent -->
+      <div>
+        <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:var(--purple); margin-bottom:12px;">Eval Agent (Sonnet judge)</div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div class="pnode" style="background:#fdf4ff; border-color:#d8b4fe; color:#7e22ce; text-align:left; min-width:0;">⚖ Judge LLM (Sonnet)<span>reads KB entry + rubric</span></div>
+          <div style="font-size:11px; color:var(--muted); padding-left:8px;">↓ scores 5 dimensions</div>
+          <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:10px 14px; font-size:12px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span style="color:var(--muted);">Extraction fidelity</span><span style="font-weight:600;">25%</span></div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span style="color:var(--muted);">Insight depth</span><span style="font-weight:600;">30%</span></div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span style="color:var(--muted);">Novelty calibration</span><span style="font-weight:600;">20%</span></div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span style="color:var(--muted);">Structural quality</span><span style="font-weight:600;">15%</span></div>
+            <div style="display:flex; justify-content:space-between;"><span style="color:var(--muted);">Strategic relevance</span><span style="font-weight:600;">10%</span></div>
+          </div>
+          <div style="font-size:11px; color:var(--muted); padding-left:8px;">↓ weighted score → verdict</div>
+          <div style="display:flex; gap:6px;">
+            <div style="flex:1; background:var(--green-light); border:1px solid #86efac; border-radius:8px; padding:8px 6px; font-size:11px; font-weight:700; color:var(--green); text-align:center;">✅ PASS<br><span style="font-weight:400; font-size:10px;">≥ 3.5</span></div>
+            <div style="flex:1; background:var(--yellow-light); border:1px solid #fcd34d; border-radius:8px; padding:8px 6px; font-size:11px; font-weight:700; color:var(--yellow); text-align:center;">🟡 REVIEW<br><span style="font-weight:400; font-size:10px;">2.5–3.49</span></div>
+            <div style="flex:1; background:#fef2f2; border:1px solid #fca5a5; border-radius:8px; padding:8px 6px; font-size:11px; font-weight:700; color:var(--red); text-align:center;">❌ FAIL<br><span style="font-weight:400; font-size:10px;">&lt; 2.5</span></div>
+          </div>
+          <div style="font-size:11px; color:var(--muted); padding-left:8px;">↓ writes back to Notion</div>
+          <div class="pnode pnode-kb" style="text-align:left; min-width:0;">📊 Eval fields written to KB<span>Eval_Score · Eval_Verdict · Eval_Notes</span></div>
+        </div>
+      </div>
+
+    </div>
+    <div style="margin-top:20px; padding:12px 16px; background:var(--bg); border-radius:8px; font-size:12px; color:var(--muted);">
+      Run manually: <code style="background:var(--surface); padding:2px 6px; border-radius:4px; font-size:11px;">python eval/eval_agent.py spot</code> — last 10 entries &nbsp;·&nbsp; <code style="background:var(--surface); padding:2px 6px; border-radius:4px; font-size:11px;">python eval/eval_agent.py weekly</code> — last 7 days
+    </div>
+  </div>
+
 </div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════
      TAB 2 — ABOUT
 ════════════════════════════════════════════════════════════════ -->
-<div id="tab-about" class="tab-panel">
+<div id="tab-about" class="tab-panel active">
 <div class="main">
 
   <div class="about-hero">
@@ -458,7 +518,7 @@
       Most knowledge workers consume far more than they process. Content gets saved, skimmed, or forgotten. This agent turns passive consumption into an indexed, searchable, deduplicated knowledge store — and surfaces only genuinely new information each day, skipping anything you already know.
     </p>
     <p>
-      Built by <strong>Surbhi Jain</strong> (HBS MBA '26) as part of the <em>Navigating Your Worth</em> course. The architecture is designed for AI and strategy knowledge but can be adapted to any domain.
+      The architecture is designed for AI and strategy knowledge but can be adapted to any domain.
     </p>
   </div>
 
@@ -536,7 +596,7 @@
       </div>
       <div>
         <div style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--accent); margin-bottom:8px;">What's worth keeping</div>
-        <p style="font-size:13px; color:var(--muted); line-height:1.6;">The eval rubric's strategic_relevance dimension encodes Surbhi's specific target roles (AI strategy, GTM, product, consulting) as the filter — not generic "is this AI content?" but "would this move a hiring conversation forward?"</p>
+        <p style="font-size:13px; color:var(--muted); line-height:1.6;">The eval rubric's strategic_relevance dimension encodes domain-specific target roles (AI strategy, GTM, product, consulting) as the filter — not generic "is this AI content?" but "would this move a role-relevant conversation forward?"</p>
       </div>
     </div>
   </div>
@@ -695,9 +755,18 @@ python eval/eval_agent.py weekly           # score everything from the past 7 da
 <div id="tab-sample" class="tab-panel">
 <div class="main">
 
-  <div class="sample-intro">
-    <h2>What the agent actually produces</h2>
-    <p>Below are representative KB entries showing the full extraction output — title, summary, key claims, concrete learnings, novelty verdict, and eval scores. These reflect the agent's actual output format on AI strategy content.</p>
+  <div class="sample-intro" style="display:grid; grid-template-columns:1fr auto; gap:24px; align-items:start;">
+    <div>
+      <h2>What the agent actually produces</h2>
+      <p style="margin-top:8px;">These are real KB entries generated from my own newsletters and YouTube subscriptions on AI — used as seed data to bootstrap the knowledge base. They show the full extraction output: title, summary, key claims, concrete learnings, novelty verdict, and eval scores.</p>
+    </div>
+    <div style="flex-shrink:0; text-align:center;">
+      <a id="demo-video-link" href="#" target="_blank" rel="noopener"
+         style="display:inline-flex; align-items:center; gap:8px; background:var(--accent); color:#fff; text-decoration:none; padding:10px 18px; border-radius:8px; font-size:13px; font-weight:600; white-space:nowrap;">
+        ▶ Watch Demo Video
+      </a>
+      <div id="video-link-note" style="font-size:11px; color:var(--muted); margin-top:6px;">Coming soon</div>
+    </div>
   </div>
 
   <div class="section-title">KB Entry — YouTube Video</div>
@@ -892,10 +961,25 @@ python eval/eval_agent.py weekly           # score everything from the past 7 da
 </div>
 
 <footer>
-  Built for HBS Navigating Your Worth · Content Intelligence Agent · Data updates automatically via GitHub Actions
+  Content Intelligence Agent · Data updates automatically via GitHub Actions
 </footer>
 
 <script>
+  // Set this to your video URL when ready (YouTube, Loom, etc.)
+  const DEMO_VIDEO_URL = "";
+
+  if (DEMO_VIDEO_URL) {
+    const link = document.getElementById('demo-video-link');
+    const note = document.getElementById('video-link-note');
+    link.href = DEMO_VIDEO_URL;
+    link.style.opacity = '1';
+    if (note) note.style.display = 'none';
+  } else {
+    const link = document.getElementById('demo-video-link');
+    link.style.opacity = '0.4';
+    link.style.pointerEvents = 'none';
+  }
+
   function switchTab(name, btn) {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));

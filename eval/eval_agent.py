@@ -19,6 +19,7 @@ import os
 import sys
 import json
 import time
+import httpx
 import argparse
 import re
 from datetime import datetime, timezone, timedelta
@@ -38,9 +39,22 @@ load_dotenv(find_dotenv(usecwd=True), override=True)
 ai     = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 notion = Client(auth=os.getenv("NOTION_TOKEN"))
 
-NOTION_DB_ID = os.getenv("NOTION_DB_ID", "").strip("'\"")
-SONNET       = "claude-sonnet-4-6"
-RATE_WAIT    = 3  # seconds between Judge calls
+NOTION_HEADERS = {
+    "Authorization": f"Bearer {os.getenv('NOTION_TOKEN', '')}",
+    "Notion-Version": "2022-06-28",
+    "Content-Type": "application/json",
+}
+
+NOTION_DB_ID      = os.getenv("NOTION_DB_ID", "").strip("'\"")
+NOTION_EVAL_DB_ID = os.getenv("NOTION_EVAL_DB_ID", "").strip("'\"")
+SONNET            = "claude-sonnet-4-6"
+RATE_WAIT         = 3  # seconds between Judge calls
+
+NOTION_HEADERS = {
+    "Authorization": f"Bearer {os.getenv('NOTION_TOKEN', '')}",
+    "Notion-Version": "2022-06-28",
+    "Content-Type": "application/json",
+}
 
 LOGS_DIR = Path(__file__).parent.parent / "logs"
 LOGS_DIR.mkdir(exist_ok=True)
@@ -63,36 +77,79 @@ def _date(prop) -> str:
     return d["start"] if d else ""
 
 
-def _ensure_eval_fields():
-    """Add Eval_Score, Eval_Verdict, Eval_Notes fields to KB if missing."""
-    db = notion.databases.retrieve(NOTION_DB_ID)
-    existing = set(db["properties"].keys())
-    updates = {}
-    if "Eval_Score" not in existing:
-        updates["Eval_Score"] = {"number": {"format": "number"}}
-    if "Eval_Verdict" not in existing:
-        updates["Eval_Verdict"] = {
-            "select": {
-                "options": [
+def _ensure_eval_db() -> str:
+    """Create the Eval Results database if it doesn't exist. Returns its ID."""
+    global NOTION_EVAL_DB_ID
+
+    if NOTION_EVAL_DB_ID:
+        try:
+            notion.databases.retrieve(NOTION_EVAL_DB_ID)
+            return NOTION_EVAL_DB_ID
+        except Exception:
+            pass  # DB gone — recreate
+
+    # Find parent page from KB DB
+    kb_db = notion.databases.retrieve(NOTION_DB_ID)
+    parent = kb_db.get("parent", {})
+
+    db = notion.databases.create(
+        parent=parent,
+        title=[{"type": "text", "text": {"content": "Eval Results"}}],
+        properties={
+            "KB_Title":     {"title": {}},
+            "Eval_Score":   {"number": {"format": "number"}},
+            "Eval_Verdict": {
+                "select": {"options": [
                     {"name": "PASS",   "color": "green"},
                     {"name": "REVIEW", "color": "yellow"},
                     {"name": "FAIL",   "color": "red"},
-                ]
-            }
-        }
-    if "Eval_Notes" not in existing:
-        updates["Eval_Notes"] = {"rich_text": {}}
-    if updates:
-        notion.databases.update(database_id=NOTION_DB_ID, properties=updates)
-        print(f"  Added eval fields to KB: {list(updates.keys())}")
+                ]}
+            },
+            "Eval_Date":    {"date": {}},
+            "Source_Type":  {"select": {"options": []}},
+            "extraction_fidelity":  {"number": {"format": "number"}},
+            "insight_depth":        {"number": {"format": "number"}},
+            "novelty_calibration":  {"number": {"format": "number"}},
+            "pipeline_integrity":   {"number": {"format": "number"}},
+            "structural_quality":   {"number": {"format": "number"}},
+            "strategic_relevance":  {"number": {"format": "number"}},
+            "Summary":      {"rich_text": {}},
+            "Notes":        {"rich_text": {}},
+            "KB_Page_ID":   {"rich_text": {}},
+        },
+    )
+    NOTION_EVAL_DB_ID = db["id"]
+
+    # Save to .env
+    from dotenv import set_key
+    env_path = Path(__file__).parent.parent / ".env"
+    set_key(str(env_path), "NOTION_EVAL_DB_ID", NOTION_EVAL_DB_ID)
+    print(f"  Created Eval Results DB: {NOTION_EVAL_DB_ID}")
+    return NOTION_EVAL_DB_ID
+
+
+def _query_db(database_id: str, **kwargs) -> list[dict]:
+    """Paginate a Notion database query."""
+    results, cursor = [], None
+    while True:
+        body = {k: v for k, v in kwargs.items() if v is not None}
+        if cursor:
+            body["start_cursor"] = cursor
+        resp = httpx.post(
+            f"https://api.notion.com/v1/databases/{database_id}/query",
+            headers=NOTION_HEADERS,
+            json=body,
+        ).json()
+        results.extend(resp.get("results", []))
+        if not resp.get("has_more"):
+            break
+        cursor = resp.get("next_cursor")
+    return results
 
 
 def fetch_entries(mode: str, n: int = 10) -> list[dict]:
     """Fetch KB entries based on mode."""
-    kwargs = dict(
-        database_id=NOTION_DB_ID,
-        sorts=[{"property": "Date_Added", "direction": "descending"}],
-    )
+    kwargs = dict(sorts=[{"property": "Date_Added", "direction": "descending"}])
 
     if mode == "spot":
         kwargs["page_size"] = n
@@ -100,15 +157,7 @@ def fetch_entries(mode: str, n: int = 10) -> list[dict]:
         week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).date().isoformat()
         kwargs["filter"] = {"property": "Date_Added", "date": {"on_or_after": week_ago}}
 
-    pages, cursor = [], None
-    while True:
-        resp = notion.databases.query(**kwargs, start_cursor=cursor) if cursor \
-              else notion.databases.query(**kwargs)
-        pages.extend(resp.get("results", []))
-        if not resp.get("has_more") or (mode == "spot" and len(pages) >= n):
-            break
-        cursor = resp.get("next_cursor")
-
+    pages = _query_db(NOTION_DB_ID, **kwargs)
     return pages[:n] if mode == "spot" else pages
 
 
@@ -183,19 +232,31 @@ Page body (claims + learnings):
     return result
 
 
-# ── Write results back to Notion ──────────────────────────────────────────────
-def write_eval_to_notion(page_id: str, result: dict):
+# ── Write results to separate Eval Results DB ─────────────────────────────────
+def write_eval_to_notion(eval_db_id: str, title: str, page_id: str, source_type: str, result: dict):
+    """Creates a new row in the Eval Results database — never touches the main KB."""
+    scores    = result.get("scores", {})
     reasoning = result.get("reasoning", {})
-    notes = " | ".join(f"{k}: {v}" for k, v in reasoning.items())
-    summary_line = result.get("summary", "")
-    full_notes = f"{summary_line} | {notes}"[:2000]
+    notes     = " | ".join(f"{k}: {v}" for k, v in reasoning.items())[:2000]
+    today     = datetime.now(timezone.utc).date().isoformat()
 
-    notion.pages.update(
-        page_id=page_id,
+    notion.pages.create(
+        parent={"database_id": eval_db_id},
         properties={
-            "Eval_Score":   {"number": result["weighted_score"]},
-            "Eval_Verdict": {"select": {"name": result["verdict"]}},
-            "Eval_Notes":   {"rich_text": [{"type": "text", "text": {"content": full_notes}}]},
+            "KB_Title":    {"title": [{"type": "text", "text": {"content": title[:200]}}]},
+            "Eval_Score":  {"number": result["weighted_score"]},
+            "Eval_Verdict":{"select": {"name": result["verdict"]}},
+            "Eval_Date":   {"date": {"start": today}},
+            "Source_Type": {"select": {"name": source_type}} if source_type else {},
+            "extraction_fidelity": {"number": scores.get("extraction_fidelity")},
+            "insight_depth":       {"number": scores.get("insight_depth")},
+            "novelty_calibration": {"number": scores.get("novelty_calibration")},
+            "pipeline_integrity":  {"number": scores.get("pipeline_integrity")},
+            "structural_quality":  {"number": scores.get("structural_quality")},
+            "strategic_relevance": {"number": scores.get("strategic_relevance")},
+            "Summary":    {"rich_text": [{"type": "text", "text": {"content": result.get("summary", "")[:2000]}}]},
+            "Notes":      {"rich_text": [{"type": "text", "text": {"content": notes}}]},
+            "KB_Page_ID": {"rich_text": [{"type": "text", "text": {"content": page_id}}]},
         },
     )
 
@@ -212,8 +273,10 @@ def main():
     print(f"Eval Agent — mode: {args.mode}{' (dry run)' if args.dry_run else ''}")
     print(f"{'='*60}\n")
 
+    eval_db_id = None
     if not args.dry_run:
-        _ensure_eval_fields()
+        eval_db_id = _ensure_eval_db()
+        print(f"  Writing results to Eval Results DB (separate from KB)\n")
 
     entries = fetch_entries(args.mode, n=args.n)
     print(f"Evaluating {len(entries)} entries...\n")
@@ -222,7 +285,9 @@ def main():
     pass_count = review_count = fail_count = 0
 
     for i, entry in enumerate(entries, 1):
-        title = _text(entry["properties"].get("Title", {}))
+        props       = entry["properties"]
+        title       = _text(props.get("Title", {}))
+        source_type = _select(props.get("Source_Type", {}))
         print(f"[{i:02d}/{len(entries):02d}] {title[:65]}")
 
         try:
@@ -236,17 +301,16 @@ def main():
             verdict_symbol = {"PASS": "✅", "REVIEW": "🟡", "FAIL": "❌"}.get(verdict, "?")
             print(f"       {verdict_symbol} {verdict}  score: {score:.2f}  — {summary}")
 
-            # Per-dimension breakdown
             for dim, s in result["scores"].items():
                 bar = "█" * s + "░" * (5 - s)
                 print(f"         {dim:25} {bar} {s}/5")
 
-            if verdict == "PASS":   pass_count += 1
+            if verdict == "PASS":     pass_count += 1
             elif verdict == "REVIEW": review_count += 1
-            else:                    fail_count += 1
+            else:                     fail_count += 1
 
             if not args.dry_run:
-                write_eval_to_notion(entry["id"], result)
+                write_eval_to_notion(eval_db_id, title, entry["id"], source_type, result)
 
             if i < len(entries):
                 time.sleep(RATE_WAIT)
