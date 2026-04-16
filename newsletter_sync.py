@@ -59,6 +59,9 @@ def main():
     log.info(f"Newsletter sync started at {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     log.info("=" * 60)
 
+    # Snapshot existing files before fetch so we only queue newly created ones
+    before = set(NEWSLETTERS.glob("*.txt")) if NEWSLETTERS.exists() else set()
+
     # Step 1: Fetch new emails from Gmail (2 days covers the daily schedule gap)
     ok = run(
         [PYTHON, "ingest/from_gmail.py", "--days", "2", "--out", str(NEWSLETTERS)],
@@ -69,25 +72,24 @@ def main():
         log.error("Also ensure IMAP is enabled in Gmail settings and you're using an App Password.")
         sys.exit(1)
 
-    # Step 2: Add each new newsletter file to Ingest Queue with content, then delete local file
-    txt_files = sorted(NEWSLETTERS.glob("*.txt")) if NEWSLETTERS.exists() else []
-    if not txt_files:
-        log.info("No newsletter files found — nothing to queue.")
+    # Step 2: Queue only files created by this fetch run
+    after = set(NEWSLETTERS.glob("*.txt")) if NEWSLETTERS.exists() else set()
+    new_files = sorted(after - before)
+    if not new_files:
+        log.info("No new newsletter files from this fetch — nothing to queue.")
         sys.exit(0)
 
     import ingest_queue
     queued = 0
-    for f in txt_files:
+    for f in new_files:
         try:
-            content = f.read_text(encoding="utf-8", errors="ignore")
-            result = ingest_queue.add_to_queue(f.name, "Newsletter", content=content)
+            result = ingest_queue.add_to_queue(str(f), "Newsletter")
             if result:
                 queued += 1
-            f.unlink()  # delete local file — content is now in Notion
         except Exception as e:
             log.warning(f"  Could not queue {f.name}: {e}")
 
-    log.info(f"Newsletter sync complete. {queued}/{len(txt_files)} files added to Ingest Queue (content stored in Notion).")
+    log.info(f"Newsletter sync complete. {queued}/{len(new_files)} new files added to Ingest Queue.")
 
 
 if __name__ == "__main__":

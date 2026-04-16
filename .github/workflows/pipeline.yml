@@ -2,8 +2,7 @@ name: Pipeline + Site Update
 
 on:
   schedule:
-    - cron: "0 7 * * *"      # daily at 7am UTC — newsletter + granola queue
-    - cron: "0 8 1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31 * *"  # every ~2 days — ingest queue poll
+    - cron: "0 7 * * *"      # daily at 7am UTC — newsletter sync + granola + ingest queue all in one job
   workflow_dispatch:          # manual trigger from GitHub UI
 
 jobs:

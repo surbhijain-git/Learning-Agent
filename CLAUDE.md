@@ -104,4 +104,6 @@ notion = Client(auth=os.getenv("NOTION_TOKEN"))
 - `ingest/from_gmail.py` deduplicates by Message-ID header, persisting seen IDs to `.seen_ids` in the output folder
 - Granola notes are auto-saved to `Talks/` via a scheduled CoWork task — `ingest/from_granola.py` does not exist and is not needed
 - HBS case PDFs are often scanned images — `from_pdf.py` will warn and skip these (OCR not implemented)
+- `newsletter_sync.py` queues newsletters as **file pointers** (not content) — txt files stay in `raw_inputs/newsletters/` until `ingest_queue.py poll` reads and deletes them. Do NOT store newsletter content inline in Notion (hits 2000-char rich_text limit). The GitHub Actions workflow runs both in the same job so files persist between steps.
+- `notion_client` v2.2.1 dropped `databases.query` — all Notion DB queries use direct `httpx.post` to `https://api.notion.com/v1/databases/{id}/query` with `Notion-Version: 2022-06-28`. Do not use `notion.databases.query` anywhere.
 

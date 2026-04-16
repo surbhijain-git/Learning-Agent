@@ -28,6 +28,7 @@ import logging
 import subprocess
 from pathlib import Path
 
+import httpx
 import requests as _requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv, find_dotenv
@@ -72,6 +73,22 @@ def _kb_id() -> str:
     return v
 
 
+def _notion_query(database_id: str, **kwargs) -> dict:
+    """Direct Notion DB query — notion-client v2 dropped databases.query."""
+    token = os.getenv("NOTION_TOKEN", "")
+    body = {k: v for k, v in kwargs.items() if v is not None}
+    resp = httpx.post(
+        f"https://api.notion.com/v1/databases/{database_id}/query",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Notion-Version": "2022-06-28",
+            "Content-Type": "application/json",
+        },
+        json=body,
+    )
+    return resp.json()
+
+
 # ── URL helpers ───────────────────────────────────────────────────────────────
 def _is_youtube(url: str) -> bool:
     return bool(re.search(r"(youtube\.com|youtu\.be)", url))
@@ -88,15 +105,15 @@ def _url_hash(url: str) -> str:
 
 # ── Dedup checks ──────────────────────────────────────────────────────────────
 def _in_kb(source_contains: str) -> bool:
-    resp = notion.databases.query(
-        database_id=_kb_id(),
+    resp = _notion_query(
+        _kb_id(),
         filter={"property": "Source", "rich_text": {"contains": source_contains}},
     )
     return bool(resp.get("results"))
 
 def _in_reading_list(source_contains: str) -> bool:
-    resp = notion.databases.query(
-        database_id=_rl_id(),
+    resp = _notion_query(
+        _rl_id(),
         filter={"property": "Source", "rich_text": {"contains": source_contains}},
     )
     return bool(resp.get("results"))
@@ -105,19 +122,19 @@ def _in_reading_list(source_contains: str) -> bool:
 # ── Ingest Queue Notion helpers ───────────────────────────────────────────────
 def _in_queue(identifier: str) -> bool:
     """Returns True if this URL or file path is already in the Ingest Queue (pending or failed)."""
-    resp = notion.databases.query(
-        database_id=_queue_id(),
+    resp = _notion_query(
+        _queue_id(),
         filter={"property": "URL", "title": {"contains": identifier[-60:]}},
     )
     return bool(resp.get("results"))
 
 def _content_to_rich_text(content: str) -> list[dict]:
-    """Split content into 2000-char chunks for Notion rich_text property."""
-    chunks = [content[i:i+2000] for i in range(0, min(len(content), 50000), 2000)]
+    """Split content into ≤1999-char chunks for Notion rich_text property."""
+    chunks = [content[i:i+1999] for i in range(0, min(len(content), 50000), 1999)]
     return [{"type": "text", "text": {"content": c}} for c in chunks]
 
 
-def add_to_queue(identifier: str, source_type: str, content: str = None) -> str | None:
+def add_to_queue(identifier: str, source_type: str, content: str = None):
     """
     Add a URL, filename, or content to the Ingest Queue.
     - identifier: display name / URL shown in the queue
@@ -146,8 +163,8 @@ def add_to_queue(identifier: str, source_type: str, content: str = None) -> str 
     return page["id"]
 
 def _query_new_queue() -> list[dict]:
-    resp = notion.databases.query(
-        database_id=_queue_id(),
+    resp = _notion_query(
+        _queue_id(),
         filter={"property": "Status", "select": {"is_empty": True}},
     )
     return resp.get("results", [])
@@ -216,7 +233,7 @@ def _save_export(cache_key: str, summary: dict, source: str, source_type: str, r
         json.dumps(export, indent=2, ensure_ascii=False)
     )
 
-def _load_export(cache_key: str) -> dict | None:
+def _load_export(cache_key: str):
     path = EXPORTS_DIR / f"{cache_key}.json"
     if not path.exists():
         return None
@@ -318,9 +335,17 @@ def _process_file(identifier: str, queue_page_id: str, source_type: str, notion_
     rl_page_id = rl.write_to_reading_list(metadata, dedup, filename, source_type)
     log.info(f"  Reading List entry: {rl_page_id}")
 
-    cache_key = f"file_{re.sub(r'[^\\w\\-.]', '_', filename)[:60]}"
+    _safe = re.sub(r'[^\w\-.]', '_', filename)[:60]
+    cache_key = f"file_{_safe}"
     _save_export(cache_key, metadata, filename, source_type, rl_page_id)
     notion.pages.update(page_id=queue_page_id, archived=True)
+
+    # Delete local file now that it's been processed
+    local_path = Path(identifier)
+    if local_path.exists():
+        local_path.unlink()
+        log.info(f"  Deleted local file: {local_path.name}")
+
     log.info("  Done — queue page archived.")
 
 
@@ -399,8 +424,8 @@ def process_page(page: dict):
 
 # ── Promote: Reading List → KB ────────────────────────────────────────────────
 def _query_read_entries() -> list[dict]:
-    resp = notion.databases.query(
-        database_id=_rl_id(),
+    resp = _notion_query(
+        _rl_id(),
         filter={"property": "Status", "select": {"equals": "Read"}},
     )
     return resp.get("results", [])
