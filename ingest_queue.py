@@ -111,9 +111,17 @@ def _in_queue(identifier: str) -> bool:
     )
     return bool(resp.get("results"))
 
-def add_to_queue(identifier: str, source_type: str) -> str | None:
+def _content_to_rich_text(content: str) -> list[dict]:
+    """Split content into 2000-char chunks for Notion rich_text property."""
+    chunks = [content[i:i+2000] for i in range(0, min(len(content), 50000), 2000)]
+    return [{"type": "text", "text": {"content": c}} for c in chunks]
+
+
+def add_to_queue(identifier: str, source_type: str, content: str = None) -> str | None:
     """
-    Add a URL or file path to the Ingest Queue.
+    Add a URL, filename, or content to the Ingest Queue.
+    - identifier: display name / URL shown in the queue
+    - content: full text content (for newsletters/Granola — avoids local file dependency)
     Skips if already in KB, Reading List, or Queue.
     Returns the new page ID, or None if skipped.
     Called by newsletter_sync.py and granola_sync.py.
@@ -122,14 +130,19 @@ def add_to_queue(identifier: str, source_type: str) -> str | None:
     if _in_kb(short_key) or _in_reading_list(short_key) or _in_queue(short_key):
         log.info(f"  Queue skip (already exists): {short_key}")
         return None
+
+    props = {
+        "URL": {"title": [{"type": "text", "text": {"content": identifier}}]},
+        "Source_Type": {"select": {"name": source_type}},
+    }
+    if content:
+        props["Content"] = {"rich_text": _content_to_rich_text(content)}
+
     page = notion.pages.create(
         parent={"database_id": _queue_id()},
-        properties={
-            "URL": {"title": [{"type": "text", "text": {"content": identifier}}]},
-            "Source_Type": {"select": {"name": source_type}},
-        },
+        properties=props,
     )
-    log.info(f"  Queued [{source_type}]: {short_key}")
+    log.info(f"  Queued [{source_type}]: {short_key} ({'with content' if content else 'URL only'})")
     return page["id"]
 
 def _query_new_queue() -> list[dict]:
@@ -260,19 +273,27 @@ def _process_youtube(url: str, queue_page_id: str):
 
 
 # ── Process: File (Newsletter / Granola / PDF / Notes) ───────────────────────
-def _process_file(file_path: str, queue_page_id: str, source_type: str):
-    path = Path(file_path)
-    filename = path.name
+def _process_file(identifier: str, queue_page_id: str, source_type: str, notion_content: str = None):
+    filename = identifier.split("/")[-1] if "/" in identifier else identifier
 
     if _in_kb(filename) or _in_reading_list(filename):
         log.info(f"  Already in KB or Reading List — skipping")
         notion.pages.update(page_id=queue_page_id, archived=True)
         return
 
-    if not path.exists():
-        raise FileNotFoundError(f"File not found: {file_path}")
+    # Get content: prefer Notion-stored content, fall back to local file
+    if notion_content and notion_content.strip():
+        content = notion_content
+        log.info(f"  Using content from Notion queue: {filename}")
+    else:
+        path = Path(identifier)
+        if not path.exists():
+            raise FileNotFoundError(
+                f"No content in Notion queue and file not found locally: {identifier}"
+            )
+        content = path.read_text(encoding="utf-8", errors="ignore")
+        log.info(f"  Using local file: {filename}")
 
-    content = path.read_text(encoding="utf-8", errors="ignore")
     word_count = len(content.split())
     if word_count < 100:
         log.info(f"  Skipped (only {word_count} words — minimum 100)")
@@ -352,6 +373,10 @@ def process_page(page: dict):
     url = "".join(t.get("text", {}).get("content", "") for t in title_items).strip()
     source_type   = (page["properties"].get("Source_Type", {}).get("select") or {}).get("name", "")
 
+    # Extract inline content if stored in Notion (newsletters/Granola)
+    content_items = page["properties"].get("Content", {}).get("rich_text", [])
+    notion_content = "".join(t.get("plain_text", "") for t in content_items).strip()
+
     if not url:
         _write_error(queue_page_id, "No URL found — paste a URL as the page title.")
         return
@@ -360,8 +385,8 @@ def process_page(page: dict):
     _set_queue_status(queue_page_id, "Processing")
 
     try:
-        if source_type in FILE_SOURCE_TYPES or (not url.startswith("http") and Path(url).suffix):
-            _process_file(url, queue_page_id, source_type or "Notes")
+        if notion_content or source_type in FILE_SOURCE_TYPES or (not url.startswith("http") and Path(url).suffix):
+            _process_file(url, queue_page_id, source_type or "Notes", notion_content=notion_content)
         elif _is_youtube(url):
             _process_youtube(url, queue_page_id)
         else:

@@ -208,30 +208,114 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 10px;
-      padding: 28px 32px;
+      padding: 32px 36px;
       margin-bottom: 40px;
     }
-    .pipeline-flow {
+    .pipeline-desc {
+      font-size: 14px;
+      color: var(--muted);
+      max-width: 700px;
+      margin-bottom: 32px;
+      line-height: 1.6;
+    }
+
+    /* Layer labels */
+    .pipeline-layer {
+      display: grid;
+      grid-template-columns: 100px 1fr;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .layer-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--muted);
+      text-align: right;
+      padding-right: 12px;
+      border-right: 2px solid var(--border);
+    }
+    .layer-content {
       display: flex;
       align-items: center;
-      gap: 0;
+      gap: 8px;
       flex-wrap: wrap;
-      margin-top: 20px;
     }
-    .pipeline-step {
+
+    /* Connector line between layers */
+    .pipeline-connector {
+      display: grid;
+      grid-template-columns: 100px 1fr;
+      gap: 16px;
+      height: 28px;
+      margin-bottom: 0;
+    }
+    .connector-spacer { border-right: 2px solid var(--border); }
+    .connector-line {
+      display: flex;
+      align-items: center;
+      padding-left: 24px;
+    }
+    .connector-line::before {
+      content: '';
+      display: block;
+      width: 2px;
+      height: 28px;
+      background: var(--border);
+      margin-right: 8px;
+    }
+    .connector-arrow {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    /* Node styles */
+    .pnode {
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+      border: 1.5px solid;
+      min-width: 110px;
+    }
+    .pnode span {
+      display: block;
+      font-size: 10px;
+      font-weight: 400;
+      margin-top: 3px;
+      line-height: 1.4;
+    }
+    .pnode-source   { background: #f0fdf4; border-color: #86efac; color: #15803d; }
+    .pnode-queue    { background: var(--accent-light); border-color: #93c5fd; color: #1d4ed8; }
+    .pnode-extract  { background: #fdf4ff; border-color: #d8b4fe; color: #7e22ce; }
+    .pnode-dedup    { background: var(--yellow-light); border-color: #fcd34d; color: #92400e; }
+    .pnode-rl       { background: #fff7ed; border-color: #fdba74; color: #c2410c; }
+    .pnode-kb       { background: #f0fdf4; border-color: #4ade80; color: #15803d; }
+    .pnode-schedule { background: var(--bg); border-color: var(--border); color: var(--muted); font-weight: 500; }
+
+    .pipe-arrow { color: #94a3b8; font-size: 14px; flex-shrink: 0; }
+
+    /* Schedule badges */
+    .sched-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
       background: var(--bg);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 12px 18px;
-      font-size: 13px;
-      text-align: center;
-    }
-    .pipeline-step strong { display: block; font-size: 13px; font-weight: 600; }
-    .pipeline-step span   { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
-    .pipeline-arrow {
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 11px;
       color: var(--muted);
-      font-size: 18px;
-      padding: 0 10px;
+    }
+    .sched-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      display: inline-block;
     }
 
     /* ── Source breakdown ── */
@@ -277,7 +361,7 @@
   <div class="header-inner">
     <div>
       <h1>Content Intelligence Agent</h1>
-      <p>Personal AI learning system — ingests YouTube videos, newsletters, and meeting notes, scores novelty against existing knowledge, and builds a structured knowledge base.</p>
+      <p>Personal AI learning system — ingests YouTube videos, newsletters, and meeting notes, scores novelty against existing knowledge, builds a structured knowledge base, and delivers a morning email digest every day at 8am.</p>
     </div>
     <div class="last-updated" id="last-updated">
       <span class="live-dot"></span>Loading...
@@ -351,40 +435,93 @@
   <!-- Pipeline -->
   <div class="section-title">How It Works</div>
   <div class="pipeline-card">
-    <div style="font-size:14px; color:var(--muted); max-width:680px;">
-      Content is ingested from multiple sources, extracted into structured knowledge using Claude, scored for novelty against the existing KB using semantic embeddings, and staged in a Reading List before being promoted to the permanent Knowledge Base.
-    </div>
-    <div class="pipeline-flow">
-      <div class="pipeline-step">
-        <strong>Sources</strong>
-        <span>YouTube · Newsletters<br>Granola · Web Links</span>
-      </div>
-      <div class="pipeline-arrow">→</div>
-      <div class="pipeline-step">
-        <strong>Ingest Queue</strong>
-        <span>Notion DB<br>auto-polled every 2 days</span>
-      </div>
-      <div class="pipeline-arrow">→</div>
-      <div class="pipeline-step">
-        <strong>Claude Extraction</strong>
-        <span>Chunk → Haiku per chunk<br>→ Sonnet/Opus aggregate</span>
-      </div>
-      <div class="pipeline-arrow">→</div>
-      <div class="pipeline-step">
-        <strong>Novelty Score</strong>
-        <span>ChromaDB semantic dedup<br>NEW · RELATED · COVERED</span>
-      </div>
-      <div class="pipeline-arrow">→</div>
-      <div class="pipeline-step">
-        <strong>Reading List</strong>
-        <span>Staged for review<br>mark Read to promote</span>
-      </div>
-      <div class="pipeline-arrow">→</div>
-      <div class="pipeline-step">
-        <strong>Knowledge Base</strong>
-        <span>Permanent store<br>embedded + indexed</span>
+    <p class="pipeline-desc">
+      Content flows from four automated sources into a unified Ingest Queue. Claude extracts structured knowledge chunk-by-chunk, then scores each piece for novelty against the existing Knowledge Base using semantic embeddings. New content is staged in a Reading List for review before being permanently indexed.
+    </p>
+
+    <!-- Layer 1: Sources -->
+    <div class="pipeline-layer">
+      <div class="layer-label">Sources</div>
+      <div class="layer-content">
+        <div class="pnode pnode-source">▶ YouTube<span>manual paste → queue</span></div>
+        <div class="pnode pnode-source">🔗 Web Links<span>manual paste → queue</span></div>
+        <div class="pnode pnode-source">✉ Newsletters<span>Gmail auto-fetch<br><span class="sched-badge"><span class="sched-dot"></span>daily</span></span></div>
+        <div class="pnode pnode-source">📝 Granola Notes<span>Talks/ folder scan<br><span class="sched-badge"><span class="sched-dot"></span>daily</span></span></div>
       </div>
     </div>
+
+    <!-- Connector -->
+    <div class="pipeline-connector">
+      <div class="connector-spacer"></div>
+      <div class="connector-line"><span class="connector-arrow">↓ all sources feed into</span></div>
+    </div>
+
+    <!-- Layer 2: Ingest Queue -->
+    <div class="pipeline-layer">
+      <div class="layer-label">Queue</div>
+      <div class="layer-content">
+        <div class="pnode pnode-queue" style="min-width:200px;">⚙ Ingest Queue<span>Notion DB — single unified entry point<br><span class="sched-badge"><span class="sched-dot"></span>polled every 2 days</span></span></div>
+      </div>
+    </div>
+
+    <!-- Connector -->
+    <div class="pipeline-connector">
+      <div class="connector-spacer"></div>
+      <div class="connector-line"><span class="connector-arrow">↓ per item</span></div>
+    </div>
+
+    <!-- Layer 3: Extraction -->
+    <div class="pipeline-layer">
+      <div class="layer-label">Extraction</div>
+      <div class="layer-content">
+        <div class="pnode pnode-extract">✂ Chunking<span>~500 words/chunk</span></div>
+        <div class="pipe-arrow">→</div>
+        <div class="pnode pnode-extract">⚡ Haiku<span>INSIGHT + LEARN<br>per chunk</span></div>
+        <div class="pipe-arrow">→</div>
+        <div class="pnode pnode-extract">🧠 Aggregation<span>Haiku / Sonnet / Opus<br>by chunk count</span></div>
+        <div class="pipe-arrow">→</div>
+        <div class="pnode pnode-extract">📋 Structured Output<span>title · summary · claims<br>concepts · learnings</span></div>
+      </div>
+    </div>
+
+    <!-- Connector -->
+    <div class="pipeline-connector">
+      <div class="connector-spacer"></div>
+      <div class="connector-line"><span class="connector-arrow">↓ scored against existing KB</span></div>
+    </div>
+
+    <!-- Layer 4: Novelty -->
+    <div class="pipeline-layer">
+      <div class="layer-label">Novelty</div>
+      <div class="layer-content">
+        <div class="pnode pnode-dedup">🔍 ChromaDB<span>all-MiniLM-L6-v2<br>384-dim embeddings</span></div>
+        <div class="pipe-arrow">→</div>
+        <div class="pnode pnode-dedup">Doc-level<span>COVERED ≥ 0.82<br>RELATED ≥ 0.65</span></div>
+        <div class="pipe-arrow">+</div>
+        <div class="pnode pnode-dedup">Claim-level<span>COVERED ≥ 0.72<br>RELATED ≥ 0.55</span></div>
+        <div class="pipe-arrow">→</div>
+        <div class="pnode pnode-dedup">Verdict<span>🟢 NEW · 🟡 RELATED<br>🔵 COVERED</span></div>
+      </div>
+    </div>
+
+    <!-- Connector -->
+    <div class="pipeline-connector">
+      <div class="connector-spacer"></div>
+      <div class="connector-line"><span class="connector-arrow">↓ staged for review</span></div>
+    </div>
+
+    <!-- Layer 5: Reading List → KB -->
+    <div class="pipeline-layer">
+      <div class="layer-label">Output</div>
+      <div class="layer-content">
+        <div class="pnode pnode-rl">📖 Reading List<span>To Read → mark Read<br>🟢 New · 🟡 New Angle · 🔵 Known</span></div>
+        <div class="pipe-arrow">→</div>
+        <div class="pnode pnode-kb">🗂 Knowledge Base<span>permanent store<br>embedded + claim-indexed</span></div>
+        <div class="pipe-arrow">+</div>
+        <div class="pnode pnode-source">✉ Morning Digest<span>email to inbox<br><span class="sched-badge"><span class="sched-dot"></span>daily 8am</span></span></div>
+      </div>
+    </div>
+
   </div>
 
 </div>

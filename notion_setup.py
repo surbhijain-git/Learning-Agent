@@ -241,7 +241,8 @@ if not iq_db_id:
                     ]
                 }
             },
-            "Error":  {"rich_text": {}},
+            "Error":   {"rich_text": {}},
+            "Content": {"rich_text": {}},
             "Source_Type": {
                 "select": {
                     "options": [

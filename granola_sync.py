@@ -50,13 +50,18 @@ def main():
     queued = 0
     skipped = 0
     for f in files:
-        result = ingest_queue.add_to_queue(str(f.resolve()), "Granola")
-        if result:
-            queued += 1
-        else:
+        try:
+            content = f.read_text(encoding="utf-8", errors="ignore")
+            result = ingest_queue.add_to_queue(f.name, "Granola", content=content)
+            if result:
+                queued += 1
+            else:
+                skipped += 1
+        except Exception as e:
+            log.warning(f"  Could not queue {f.name}: {e}")
             skipped += 1
 
-    log.info(f"Granola sync complete. {queued} queued, {skipped} skipped (already exists).")
+    log.info(f"Granola sync complete. {queued} queued, {skipped} skipped (already exists). Content stored in Notion.")
 
 
 if __name__ == "__main__":

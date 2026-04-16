@@ -69,7 +69,7 @@ def main():
         log.error("Also ensure IMAP is enabled in Gmail settings and you're using an App Password.")
         sys.exit(1)
 
-    # Step 2: Add each new newsletter file to the Ingest Queue
+    # Step 2: Add each new newsletter file to Ingest Queue with content, then delete local file
     txt_files = sorted(NEWSLETTERS.glob("*.txt")) if NEWSLETTERS.exists() else []
     if not txt_files:
         log.info("No newsletter files found — nothing to queue.")
@@ -78,11 +78,16 @@ def main():
     import ingest_queue
     queued = 0
     for f in txt_files:
-        result = ingest_queue.add_to_queue(str(f.resolve()), "Newsletter")
-        if result:
-            queued += 1
+        try:
+            content = f.read_text(encoding="utf-8", errors="ignore")
+            result = ingest_queue.add_to_queue(f.name, "Newsletter", content=content)
+            if result:
+                queued += 1
+            f.unlink()  # delete local file — content is now in Notion
+        except Exception as e:
+            log.warning(f"  Could not queue {f.name}: {e}")
 
-    log.info(f"Newsletter sync complete. {queued}/{len(txt_files)} files added to Ingest Queue.")
+    log.info(f"Newsletter sync complete. {queued}/{len(txt_files)} files added to Ingest Queue (content stored in Notion).")
 
 
 if __name__ == "__main__":
