@@ -238,10 +238,9 @@ def main():
                 skipped += 1
                 continue
 
-            # Build filename: date_sender-slug_subject-slug.txt
-            sender_slug = slugify(re.sub(r"<.*?>", "", from_addr).strip())[:30]
-            subject_slug = slugify(subject)[:40]
-            filename = f"{sent_date}_{sender_slug}_{subject_slug}.txt"
+            # Filename based on Message-ID — stable across re-runs, no collision counter needed
+            msg_id_safe = re.sub(r"[^\w\-]", "_", message_id_header.strip("<>"))[:80]
+            filename = f"{msg_id_safe}.txt"
 
             # Add header metadata to file
             full_content = (
@@ -253,14 +252,6 @@ def main():
             )
 
             out_path = out_dir / filename
-            # Handle filename collisions
-            if out_path.exists():
-                stem = out_path.stem
-                suffix = out_path.suffix
-                counter = 1
-                while out_path.exists():
-                    out_path = out_dir / f"{stem}_{counter}{suffix}"
-                    counter += 1
 
             out_path.write_text(full_content, encoding="utf-8")
             seen_ids.add(message_id_header)
