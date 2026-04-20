@@ -532,6 +532,65 @@ def sync_all(force: bool = False):
     print(f"Claims collection: {get_claims_collection().count()} total claim vectors.")
 
 
+# ── Rescore ──────────────────────────────────────────────────────────────────
+
+def rescore_all():
+    """
+    Re-compute Similarity_Score (normalized) for every KB entry and write to Notion.
+    Run after changing thresholds or normalization logic.
+    Requires ChromaDB to be synced first (run sync --force).
+    """
+    print("Fetching all Notion pages...")
+    pages = _fetch_all_notion_pages()
+    doc_col = get_collection()
+    print(f"Rescoring {len(pages)} entries...\n")
+
+    updated = skipped = 0
+    for i, page in enumerate(pages, 1):
+        page_id = page["id"]
+        title_items = page["properties"].get("Title", {}).get("title", [])
+        title = title_items[0]["text"]["content"] if title_items else ""
+        if not title:
+            skipped += 1
+            continue
+
+        key_concepts = [
+            c.get("name", "").strip()
+            for c in page["properties"].get("Key_Concepts", {}).get("multi_select", [])
+            if c.get("name")
+        ]
+        body_text  = _get_page_body_text(page_id)
+        embed_text = make_embed_text(key_concepts, body_text)
+
+        score, match_title, verdict = 0.0, "", "NEW"
+        if doc_col.count() > 1:
+            n = min(6, doc_col.count())
+            res = doc_col.query(query_texts=[embed_text], n_results=n,
+                                include=["distances", "metadatas"])
+            for dist, rid, meta in zip(res["distances"][0], res["ids"][0], res["metadatas"][0]):
+                if rid == page_id:
+                    continue
+                raw = 1.0 - dist
+                score = _normalize(raw)
+                match_title = meta.get("title", "")
+                break
+
+            if score >= COVERED_THRESHOLD:
+                verdict = "COVERED"
+            elif score >= RELATED_THRESHOLD:
+                verdict = "RELATED"
+
+        notion.pages.update(
+            page_id=page_id,
+            properties={"Similarity_Score": {"number": score}},
+        )
+        print(f"  [{i:02d}/{len(pages)}] {title[:55]:<55}  {verdict:<8}  score={score:.3f}  [{match_title[:35]}]")
+        updated += 1
+        time.sleep(0.15)
+
+    print(f"\nRescore complete. {updated} updated, {skipped} skipped.")
+
+
 # ── Self-test ─────────────────────────────────────────────────────────────────
 
 def self_test():
@@ -644,12 +703,15 @@ def main():
     check_p = sub.add_parser("check", help="Check novelty for one Notion page")
     check_p.add_argument("page_id")
 
+    sub.add_parser("rescore", help="Re-compute normalized Similarity_Score for all KB entries in Notion")
     sub.add_parser("test", help="Run self-test")
 
     args = parser.parse_args()
 
     if args.cmd == "sync":
         sync_all(force=getattr(args, "force", False))
+    elif args.cmd == "rescore":
+        rescore_all()
     elif args.cmd == "check":
         result = check_novelty(args.page_id)
         print(f"Verdict: {result['verdict']}  Score: {result['score']:.4f}")
