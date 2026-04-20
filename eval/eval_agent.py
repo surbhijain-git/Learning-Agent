@@ -279,9 +279,9 @@ def write_eval_to_notion(eval_db_id: str, title: str, page_id: str, source_type:
     )
 
 
-# ── Pipeline health report ────────────────────────────────────────────────────
-SCRIPT_SOURCE_TYPES = {"Newsletter", "Granola", "PDF"}  # added by sync scripts
-MANUAL_SOURCE_TYPES = {"YouTube", "Link", "Notes", "Case"}  # manually added by user
+# ── Pipeline throughput eval ──────────────────────────────────────────────────
+SCRIPT_SOURCE_TYPES = {"Newsletter", "Granola", "PDF"}
+MANUAL_SOURCE_TYPES = {"YouTube", "Link", "Notes", "Case"}
 
 
 def _count_by_source_type(pages: list[dict]) -> dict:
@@ -292,68 +292,160 @@ def _count_by_source_type(pages: list[dict]) -> dict:
     return counts
 
 
-def pipeline_health_report():
-    """Print a pipeline state snapshot: queue backlog, source breakdown, clearance status."""
+def _throughput_score(processed: int, failed: int, pending: int) -> int:
+    """
+    Score 1-5 for pipeline throughput this run.
+    processed = RL items added today (archived queue items = success)
+    failed    = queue items with Status=Failed
+    pending   = queue items with no Status (backlog not processed)
+    """
+    total_expected = processed + failed + pending
+    if total_expected == 0:
+        return 5  # nothing was queued — that's fine
+
+    success_rate = processed / total_expected
+
+    if failed == 0 and pending == 0:
+        return 5   # perfect — everything processed, nothing left
+    elif failed == 0 and success_rate >= 0.8:
+        return 4   # minor backlog, no failures
+    elif failed == 0:
+        return 3   # significant backlog but no failures
+    elif success_rate >= 0.5:
+        return 2   # failures present, at least half got through
+    else:
+        return 1   # majority failed or stuck
+
+
+def pipeline_health_report(eval_db_id: str = None) -> dict:
+    """
+    Measure pipeline throughput: how many items should have been processed vs were.
+    Prints a breakdown, returns a metrics dict, and writes a score row to Eval DB.
+
+    Logic:
+      - Reading List items added TODAY  = successfully processed (queue archived on success)
+      - Ingest Queue items Status=Failed = failed to process
+      - Ingest Queue items with no Status = pending / not yet processed (backlog)
+    """
+    today = datetime.now(timezone.utc).date().isoformat()
+
     print(f"\n{'─'*60}")
-    print("PIPELINE HEALTH REPORT")
+    print(f"PIPELINE THROUGHPUT — {today}")
     print(f"{'─'*60}")
 
-    # ── Ingest Queue ──────────────────────────────────────────────────────────
-    if not NOTION_INGEST_QUEUE_ID:
-        print("  ⚠️  NOTION_INGEST_QUEUE_ID not set — skipping queue report")
-    else:
-        all_queue   = _query_db(NOTION_INGEST_QUEUE_ID)
-        pending     = [p for p in all_queue if not _select(p["properties"].get("Status", {}))]
-        processing  = [p for p in all_queue if _select(p["properties"].get("Status", {})) == "Processing"]
-        failed      = [p for p in all_queue if _select(p["properties"].get("Status", {})) == "Failed"]
+    processed_today, failed_items, pending_items = [], [], []
+    pending_count = failed_count = processed_count = 0
 
-        print(f"\n  Ingest Queue  ({len(all_queue)} total)")
+    # ── Ingest Queue: what's left (failed or backlog) ─────────────────────────
+    if NOTION_INGEST_QUEUE_ID:
+        all_queue  = _query_db(NOTION_INGEST_QUEUE_ID)
+        pending_items   = [p for p in all_queue if not _select(p["properties"].get("Status", {}))]
+        failed_items    = [p for p in all_queue if _select(p["properties"].get("Status", {})) == "Failed"]
+        stuck_items     = [p for p in all_queue if _select(p["properties"].get("Status", {})) == "Processing"]
+        pending_count   = len(pending_items)
+        failed_count    = len(failed_items)
+
+        print(f"\n  Still in Queue after this run:")
         if not all_queue:
-            print("    ✅ Queue is clear — nothing pending")
+            print("    ✅ Queue fully cleared")
         else:
-            if pending:
-                by_type = _count_by_source_type(pending)
-                manual  = {k: v for k, v in by_type.items() if k in MANUAL_SOURCE_TYPES or k == "Unknown"}
-                script  = {k: v for k, v in by_type.items() if k in SCRIPT_SOURCE_TYPES}
-                print(f"    🕐 Pending ({len(pending)}):")
+            if pending_items:
+                by_type = _count_by_source_type(pending_items)
+                print(f"    🕐 Not processed ({pending_count}) — backlog or added after poll:")
                 for st, n in sorted(by_type.items()):
                     tag = "🤖 script" if st in SCRIPT_SOURCE_TYPES else "👤 manual"
                     print(f"       {st:<15} {n:>3}  [{tag}]")
-            if processing:
-                print(f"    ⏳ Processing (stuck?): {len(processing)}")
-            if failed:
-                print(f"    ❌ Failed: {len(failed)}")
-                for p in failed:
-                    title_items = p["properties"].get("URL", {}).get("title", [])
-                    title = "".join(t.get("plain_text", "") for t in title_items)[:60]
-                    print(f"       · {title}")
-            if not pending and not processing and not failed:
-                print("    ✅ Queue is clear")
-
-    # ── Reading List ──────────────────────────────────────────────────────────
-    if not NOTION_READING_LIST_ID:
-        print("  ⚠️  NOTION_READING_LIST_ID not set — skipping reading list report")
+            if failed_items:
+                print(f"    ❌ Failed ({failed_count}) — need investigation:")
+                for p in failed_items:
+                    url_items = p["properties"].get("URL", {}).get("title", [])
+                    url = "".join(t.get("plain_text", "") for t in url_items)[:70]
+                    print(f"       · {url}")
+            if stuck_items:
+                print(f"    ⏳ Stuck in Processing ({len(stuck_items)}) — may need manual reset")
     else:
-        rl_pages   = _query_db(NOTION_READING_LIST_ID)
-        to_read    = [p for p in rl_pages if _select(p["properties"].get("Status", {})) == "To Read"]
-        by_type_rl = _count_by_source_type(to_read)
+        print("  ⚠️  NOTION_INGEST_QUEUE_ID not set")
 
-        print(f"\n  Reading List  ({len(rl_pages)} total, {len(to_read)} unread)")
-        if to_read:
-            for st, n in sorted(by_type_rl.items()):
-                print(f"    📄 {st:<15} {n:>3} unread")
+    # ── Reading List: what was successfully processed today ───────────────────
+    if NOTION_READING_LIST_ID:
+        rl_today = _query_db(
+            NOTION_READING_LIST_ID,
+            filter={"property": "Date_Added", "date": {"equals": today}},
+        )
+        processed_count = len(rl_today)
+        by_type_processed = _count_by_source_type(rl_today)
+
+        rl_all    = _query_db(NOTION_READING_LIST_ID)
+        unread    = [p for p in rl_all if _select(p["properties"].get("Status", {})) == "To Read"]
+
+        print(f"\n  Processed today → Reading List ({processed_count}):")
+        if rl_today:
+            for st, n in sorted(by_type_processed.items()):
+                print(f"    ✅ {st:<15} {n:>3}")
         else:
-            print("    ✅ All items reviewed")
+            print("    — nothing processed today")
 
-    # ── KB summary ────────────────────────────────────────────────────────────
+        print(f"\n  Reading List total: {len(rl_all)}  ({len(unread)} unread, {len(rl_all)-len(unread)} reviewed)")
+    else:
+        print("  ⚠️  NOTION_READING_LIST_ID not set")
+
+    # ── KB ────────────────────────────────────────────────────────────────────
     if NOTION_DB_ID:
         kb_pages   = _query_db(NOTION_DB_ID)
         by_type_kb = _count_by_source_type(kb_pages)
-        print(f"\n  Knowledge Base  ({len(kb_pages)} entries)")
+        print(f"\n  Knowledge Base ({len(kb_pages)} entries total):")
         for st, n in sorted(by_type_kb.items()):
             print(f"    📚 {st:<15} {n:>3}")
 
-    print(f"\n{'─'*60}\n")
+    # ── Throughput score ──────────────────────────────────────────────────────
+    score = _throughput_score(processed_count, failed_count, pending_count)
+    total_expected = processed_count + failed_count + pending_count
+    pct = f"{processed_count}/{total_expected} ({processed_count/total_expected*100:.0f}%)" if total_expected else "n/a"
+
+    verdict = "PASS" if score >= 4 else ("REVIEW" if score >= 3 else "FAIL")
+    symbol  = {"PASS": "✅", "REVIEW": "🟡", "FAIL": "❌"}[verdict]
+
+    print(f"\n  Throughput score: {score}/5  {symbol} {verdict}  ({pct} processed)")
+    print(f"{'─'*60}\n")
+
+    metrics = {
+        "processed_today": processed_count,
+        "failed":          failed_count,
+        "pending":         pending_count,
+        "score":           score,
+        "verdict":         verdict,
+        "pct":             pct,
+    }
+
+    # Write pipeline-level score row to Eval DB
+    if eval_db_id:
+        summary = (
+            f"Throughput {pct}. "
+            f"Processed: {processed_count}. Failed: {failed_count}. Pending: {pending_count}."
+        )
+        notes = (
+            f"Failed items: {[p['properties'].get('URL',{}).get('title',[{}])[0].get('plain_text','?')[:40] for p in failed_items]}. "
+            f"Pending types: {dict(_count_by_source_type(pending_items))}"
+        ) if (failed_items or pending_items) else "Queue fully cleared."
+
+        try:
+            notion.pages.create(
+                parent={"database_id": eval_db_id},
+                properties={
+                    "KB_Title":            {"title": [{"type": "text", "text": {"content": f"Pipeline Run — {today}"}}]},
+                    "Eval_Score":          {"number": float(score)},
+                    "Eval_Verdict":        {"select": {"name": verdict}},
+                    "Eval_Date":           {"date": {"start": today}},
+                    "Source_Type":         {"select": {"name": "Pipeline"}},
+                    "pipeline_integrity":  {"number": float(score)},
+                    "Summary":             {"rich_text": [{"type": "text", "text": {"content": summary[:2000]}}]},
+                    "Notes":               {"rich_text": [{"type": "text", "text": {"content": notes[:2000]}}]},
+                },
+            )
+        except Exception as e:
+            print(f"  ⚠️  Could not write pipeline score to Eval DB: {e}")
+
+    return metrics
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -374,6 +466,8 @@ def main():
     if not args.dry_run:
         eval_db_id = _ensure_eval_db()
         print(f"  Writing results to Eval Results DB (separate from KB)\n")
+
+    pipeline_health_report(eval_db_id=eval_db_id)
 
     entries = fetch_entries(args.mode, n=args.n)
     print(f"Evaluating {len(entries)} entries...\n")
