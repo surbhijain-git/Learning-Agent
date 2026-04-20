@@ -62,12 +62,14 @@ jobs:
           NOTION_INGEST_QUEUE_ID:   ${{ secrets.NOTION_INGEST_QUEUE_ID }}
         run: python ingest_queue.py poll --once
 
-      - name: Run eval agent (score last 5 KB entries)
+      - name: Run eval agent (pipeline health + score last 5 KB entries)
         env:
-          ANTHROPIC_API_KEY:      ${{ secrets.ANTHROPIC_API_KEY }}
-          NOTION_TOKEN:           ${{ secrets.NOTION_TOKEN }}
-          NOTION_DB_ID:           ${{ secrets.NOTION_DB_ID }}
-          NOTION_EVAL_DB_ID:      ${{ secrets.NOTION_EVAL_DB_ID }}
+          ANTHROPIC_API_KEY:        ${{ secrets.ANTHROPIC_API_KEY }}
+          NOTION_TOKEN:             ${{ secrets.NOTION_TOKEN }}
+          NOTION_DB_ID:             ${{ secrets.NOTION_DB_ID }}
+          NOTION_EVAL_DB_ID:        ${{ secrets.NOTION_EVAL_DB_ID }}
+          NOTION_INGEST_QUEUE_ID:   ${{ secrets.NOTION_INGEST_QUEUE_ID }}
+          NOTION_READING_LIST_ID:   ${{ secrets.NOTION_READING_LIST_ID }}
         run: python eval/eval_agent.py spot --n 5
         continue-on-error: true   # eval failure should never block the pipeline
 

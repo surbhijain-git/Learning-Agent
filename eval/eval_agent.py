@@ -45,10 +45,12 @@ NOTION_HEADERS = {
     "Content-Type": "application/json",
 }
 
-NOTION_DB_ID      = os.getenv("NOTION_DB_ID", "").strip("'\"")
-NOTION_EVAL_DB_ID = os.getenv("NOTION_EVAL_DB_ID", "").strip("'\"")
-SONNET            = "claude-sonnet-4-6"
-RATE_WAIT         = 3  # seconds between Judge calls
+NOTION_DB_ID           = os.getenv("NOTION_DB_ID", "").strip("'\"")
+NOTION_EVAL_DB_ID      = os.getenv("NOTION_EVAL_DB_ID", "").strip("'\"")
+NOTION_INGEST_QUEUE_ID = os.getenv("NOTION_INGEST_QUEUE_ID", "").strip("'\"")
+NOTION_READING_LIST_ID = os.getenv("NOTION_READING_LIST_ID", "").strip("'\"")
+SONNET                 = "claude-sonnet-4-6"
+RATE_WAIT              = 3  # seconds between Judge calls
 
 NOTION_HEADERS = {
     "Authorization": f"Bearer {os.getenv('NOTION_TOKEN', '')}",
@@ -277,6 +279,83 @@ def write_eval_to_notion(eval_db_id: str, title: str, page_id: str, source_type:
     )
 
 
+# ── Pipeline health report ────────────────────────────────────────────────────
+SCRIPT_SOURCE_TYPES = {"Newsletter", "Granola", "PDF"}  # added by sync scripts
+MANUAL_SOURCE_TYPES = {"YouTube", "Link", "Notes", "Case"}  # manually added by user
+
+
+def _count_by_source_type(pages: list[dict]) -> dict:
+    counts = {}
+    for p in pages:
+        st = _select(p["properties"].get("Source_Type", {})) or "Unknown"
+        counts[st] = counts.get(st, 0) + 1
+    return counts
+
+
+def pipeline_health_report():
+    """Print a pipeline state snapshot: queue backlog, source breakdown, clearance status."""
+    print(f"\n{'─'*60}")
+    print("PIPELINE HEALTH REPORT")
+    print(f"{'─'*60}")
+
+    # ── Ingest Queue ──────────────────────────────────────────────────────────
+    if not NOTION_INGEST_QUEUE_ID:
+        print("  ⚠️  NOTION_INGEST_QUEUE_ID not set — skipping queue report")
+    else:
+        all_queue   = _query_db(NOTION_INGEST_QUEUE_ID)
+        pending     = [p for p in all_queue if not _select(p["properties"].get("Status", {}))]
+        processing  = [p for p in all_queue if _select(p["properties"].get("Status", {})) == "Processing"]
+        failed      = [p for p in all_queue if _select(p["properties"].get("Status", {})) == "Failed"]
+
+        print(f"\n  Ingest Queue  ({len(all_queue)} total)")
+        if not all_queue:
+            print("    ✅ Queue is clear — nothing pending")
+        else:
+            if pending:
+                by_type = _count_by_source_type(pending)
+                manual  = {k: v for k, v in by_type.items() if k in MANUAL_SOURCE_TYPES or k == "Unknown"}
+                script  = {k: v for k, v in by_type.items() if k in SCRIPT_SOURCE_TYPES}
+                print(f"    🕐 Pending ({len(pending)}):")
+                for st, n in sorted(by_type.items()):
+                    tag = "🤖 script" if st in SCRIPT_SOURCE_TYPES else "👤 manual"
+                    print(f"       {st:<15} {n:>3}  [{tag}]")
+            if processing:
+                print(f"    ⏳ Processing (stuck?): {len(processing)}")
+            if failed:
+                print(f"    ❌ Failed: {len(failed)}")
+                for p in failed:
+                    title_items = p["properties"].get("URL", {}).get("title", [])
+                    title = "".join(t.get("plain_text", "") for t in title_items)[:60]
+                    print(f"       · {title}")
+            if not pending and not processing and not failed:
+                print("    ✅ Queue is clear")
+
+    # ── Reading List ──────────────────────────────────────────────────────────
+    if not NOTION_READING_LIST_ID:
+        print("  ⚠️  NOTION_READING_LIST_ID not set — skipping reading list report")
+    else:
+        rl_pages   = _query_db(NOTION_READING_LIST_ID)
+        to_read    = [p for p in rl_pages if _select(p["properties"].get("Status", {})) == "To Read"]
+        by_type_rl = _count_by_source_type(to_read)
+
+        print(f"\n  Reading List  ({len(rl_pages)} total, {len(to_read)} unread)")
+        if to_read:
+            for st, n in sorted(by_type_rl.items()):
+                print(f"    📄 {st:<15} {n:>3} unread")
+        else:
+            print("    ✅ All items reviewed")
+
+    # ── KB summary ────────────────────────────────────────────────────────────
+    if NOTION_DB_ID:
+        kb_pages   = _query_db(NOTION_DB_ID)
+        by_type_kb = _count_by_source_type(kb_pages)
+        print(f"\n  Knowledge Base  ({len(kb_pages)} entries)")
+        for st, n in sorted(by_type_kb.items()):
+            print(f"    📚 {st:<15} {n:>3}")
+
+    print(f"\n{'─'*60}\n")
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main():
     parser = argparse.ArgumentParser(description="Eval agent — Judge LLM for KB quality")
@@ -288,6 +367,8 @@ def main():
     print(f"\n{'='*60}")
     print(f"Eval Agent — mode: {args.mode}{' (dry run)' if args.dry_run else ''}")
     print(f"{'='*60}\n")
+
+    pipeline_health_report()
 
     eval_db_id = None
     if not args.dry_run:
