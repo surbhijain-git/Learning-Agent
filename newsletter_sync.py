@@ -64,7 +64,7 @@ def main():
 
     # Step 1: Fetch new emails from Gmail (2 days covers the daily schedule gap)
     ok = run(
-        [PYTHON, "ingest/from_gmail.py", "--days", "2", "--out", str(NEWSLETTERS)],
+        [PYTHON, "ingest/from_gmail.py", "--days", "2", "--mailbox", "INBOX/Newsletter", "--out", str(NEWSLETTERS)],
         "Gmail fetch (last 2 days)",
     )
     if not ok:

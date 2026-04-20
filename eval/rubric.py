@@ -42,10 +42,12 @@ DIMENSION_DESCRIPTIONS = {
         "Key concepts: precise topic tags."
     ),
     "pipeline_integrity": (
-        "Did the entry move correctly through the pipeline? "
-        "Source processed from Ingest Queue (not stuck), "
-        "entry appeared in Reading List if NEW/RELATED (not if COVERED), "
-        "and all required fields (Source_Type, Date_Added, Source) are populated."
+        "Did the entry move correctly through the full pipeline without silent failures? "
+        "Checks: (1) source was fetched from the correct location (e.g. right Gmail label, not INBOX default), "
+        "(2) dedup prevented reprocessing the same source on re-runs, "
+        "(3) entry appeared in Reading List if NEW/RELATED (not if COVERED), "
+        "(4) all required fields (Source_Type, Date_Added, Source) are populated, "
+        "(5) no silent errors — failures surfaced visibly rather than swallowed by continue-on-error."
     ),
     "strategic_relevance": (
         "Is this content genuinely useful for roles in AI strategy, GTM strategy, "
@@ -79,9 +81,25 @@ SCORING_ANCHORS = {
         5: "All fields complete and precise. Title is a short topic label (3-6 words). Summary is 2-3 specific sentences. 3-5 claims that are non-obvious. Learnings name specific tools, frameworks, percentages, or model names. Key concepts are precise tags.",
     },
     "pipeline_integrity": {
-        1: "Entry is missing required fields (Source_Type, Date_Added, or Source blank), OR a NEW/RELATED entry has no Reading List counterpart, OR a COVERED entry incorrectly appears in the Reading List.",
-        3: "Required fields are populated but one pipeline step misbehaved — e.g., entry reached KB but Reading List status was not updated, or Source field is a filename rather than a meaningful identifier.",
-        5: "All required fields populated. Entry moved correctly: Ingest Queue item was processed and removed, NEW/RELATED entry appears in Reading List, COVERED entry does not. No stuck or orphaned items.",
+        1: (
+            "Entry has one or more critical failures: required fields missing (Source_Type, Date_Added, or Source blank); "
+            "OR a NEW/RELATED entry has no Reading List counterpart; "
+            "OR source was fetched from the wrong location (e.g. INBOX instead of the correct Gmail label) meaning entire source categories were silently skipped; "
+            "OR the same source was reprocessed on re-runs due to broken dedup (e.g. .seen_ids file not persisting across CI runs); "
+            "OR a pipeline failure was swallowed silently (continue-on-error) with no visible signal."
+        ),
+        3: (
+            "Required fields populated and entry reached the correct pipeline stage, but one reliability issue present — "
+            "e.g. dedup works locally but not in CI, or errors surface in logs but not as job failures, "
+            "or Source field shows a raw filename rather than a meaningful identifier."
+        ),
+        5: (
+            "All required fields populated. Entry moved correctly through all stages: "
+            "Ingest Queue item processed and removed, NEW/RELATED entry in Reading List, COVERED entry absent. "
+            "Source fetched from the correct mailbox/location. "
+            "Dedup is stable across re-runs (same source not reprocessed). "
+            "Failures surface visibly — no silent swallowing of errors."
+        ),
     },
     "strategic_relevance": {
         1: "Content is tangential or irrelevant to AI strategy, GTM strategy, product strategy, or consulting. Would not be useful in any strategy or advisory role.",
@@ -194,7 +212,7 @@ FEW_SHOT_EXAMPLES = [
             "extraction_fidelity": "Reasonably accurate but somewhat surface-level.",
             "insight_depth": "Orchestration-as-moat is a real insight; task decomposition is fairly well-known.",
             "novelty_calibration": "KB has multiple entries on orchestration and AI infrastructure — should be RELATED not NEW.",
-            "pipeline_integrity": "Required fields populated and Reading List entry present, but Source field shows filename not a clean identifier.",
+            "pipeline_integrity": "Required fields populated and Reading List entry present, but Source field shows a raw filename. Also: dedup relies on filename matching — if the same source is re-fetched with a different filename (e.g. timestamp-based naming), it will be reprocessed and consume tokens without producing new KB value.",
             "structural_quality": "Claims are decent but learnings are too vague. No named frameworks or tools.",
             "strategic_relevance": "Relevant to AI strategy and product roles.",
         },
