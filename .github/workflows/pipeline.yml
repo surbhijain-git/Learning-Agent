@@ -62,6 +62,15 @@ jobs:
           NOTION_INGEST_QUEUE_ID:   ${{ secrets.NOTION_INGEST_QUEUE_ID }}
         run: python ingest_queue.py poll --once
 
+      - name: Promote Read entries → KB
+        env:
+          ANTHROPIC_API_KEY:        ${{ secrets.ANTHROPIC_API_KEY }}
+          NOTION_TOKEN:             ${{ secrets.NOTION_TOKEN }}
+          NOTION_DB_ID:             ${{ secrets.NOTION_DB_ID }}
+          NOTION_READING_LIST_ID:   ${{ secrets.NOTION_READING_LIST_ID }}
+          NOTION_INGEST_QUEUE_ID:   ${{ secrets.NOTION_INGEST_QUEUE_ID }}
+        run: python ingest_queue.py promote --once
+
       - name: Run eval agent (pipeline health + score last 5 KB entries)
         env:
           ANTHROPIC_API_KEY:        ${{ secrets.ANTHROPIC_API_KEY }}

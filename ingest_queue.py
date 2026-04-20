@@ -523,15 +523,18 @@ def poll(interval: int = 30, once: bool = False):
         time.sleep(interval)
 
 
-def poll_promote(interval: int = 60):
-    log.info(f"Promote poller: checking Reading List every {interval}s  |  DB: {_rl_id()}")
-    log.info("Mark a Reading List entry as 'Read' to promote it to the KB.")
-    log.info("Ctrl-C to stop.")
+def poll_promote(interval: int = 60, once: bool = False):
+    log.info(f"Promote poller  |  DB: {_rl_id()}  |  mode: {'once' if once else f'every {interval}s'}")
+    if not once:
+        log.info("Mark a Reading List entry as 'Read' to promote it to the KB.")
+        log.info("Ctrl-C to stop.")
     while True:
         try:
             entries = _query_read_entries()
             if entries:
                 log.info(f"Found {len(entries)} entry/entries marked Read")
+            else:
+                log.info("No entries marked Read — nothing to promote.")
             for entry in entries:
                 promote_entry(entry)
         except KeyboardInterrupt:
@@ -539,6 +542,9 @@ def poll_promote(interval: int = 60):
             break
         except Exception as e:
             log.error(f"Promote poll error: {e}")
+        if once:
+            log.info("One-shot promote complete.")
+            break
         time.sleep(interval)
 
 
@@ -554,12 +560,13 @@ def main():
 
     promo_p = sub.add_parser("promote", help="Poll Reading List (Read) → KB")
     promo_p.add_argument("--interval", type=int, default=60)
+    promo_p.add_argument("--once", action="store_true", help="Promote all Read entries once, then exit (used by CI)")
 
     args = parser.parse_args()
     if args.cmd == "poll":
         poll(interval=args.interval, once=args.once)
     elif args.cmd == "promote":
-        poll_promote(interval=args.interval)
+        poll_promote(interval=args.interval, once=args.once)
     else:
         parser.print_help()
 
