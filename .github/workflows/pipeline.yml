@@ -62,6 +62,16 @@ jobs:
           NOTION_INGEST_QUEUE_ID:   ${{ secrets.NOTION_INGEST_QUEUE_ID }}
         run: python ingest_queue.py poll --once
 
+      - name: Send morning digest email
+        env:
+          NOTION_TOKEN:             ${{ secrets.NOTION_TOKEN }}
+          NOTION_READING_LIST_ID:   ${{ secrets.NOTION_READING_LIST_ID }}
+          NEWSLETTER_EMAIL:         ${{ secrets.NEWSLETTER_EMAIL }}
+          NEWSLETTER_EMAIL_PASSWORD: ${{ secrets.NEWSLETTER_EMAIL_PASSWORD }}
+          MY_MAIN_EMAIL:            ${{ secrets.MY_MAIN_EMAIL }}
+        run: python morning_digest.py
+        continue-on-error: true   # don't fail the pipeline if digest has nothing to send
+
       - name: Generate site data (Notion → docs/data.json)
         env:
           NOTION_TOKEN:             ${{ secrets.NOTION_TOKEN }}

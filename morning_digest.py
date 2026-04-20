@@ -23,16 +23,26 @@ from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
+import httpx
 from dotenv import load_dotenv, find_dotenv
-from notion_client import Client
 
 load_dotenv(find_dotenv(usecwd=True), override=True)
-notion = Client(auth=os.getenv("NOTION_TOKEN"))
 
+NOTION_TOKEN    = os.getenv("NOTION_TOKEN", "")
 READING_LIST_ID = os.getenv("NOTION_READING_LIST_ID", "").strip("'\"")
 FROM_EMAIL      = os.getenv("NEWSLETTER_EMAIL", "").strip()
 FROM_PASSWORD   = os.getenv("NEWSLETTER_EMAIL_PASSWORD", "").strip()
 TO_EMAIL        = os.getenv("MY_MAIN_EMAIL", "").strip()
+
+
+def _notion_query(database_id: str, **kwargs) -> dict:
+    body = {k: v for k, v in kwargs.items() if v is not None}
+    resp = httpx.post(
+        f"https://api.notion.com/v1/databases/{database_id}/query",
+        headers={"Authorization": f"Bearer {NOTION_TOKEN}", "Notion-Version": "2022-06-28", "Content-Type": "application/json"},
+        json=body,
+    )
+    return resp.json()
 
 
 def _text(prop) -> str:
@@ -49,8 +59,8 @@ def notion_url(page_id: str) -> str:
 
 def fetch_reading_list() -> tuple[list, list]:
     """Returns (new_entries, related_entries) — both To Read only."""
-    resp = notion.databases.query(
-        database_id=READING_LIST_ID,
+    resp = _notion_query(
+        READING_LIST_ID,
         filter={"property": "Status", "select": {"equals": "To Read"}},
         sorts=[{"property": "Date_Added", "direction": "descending"}],
     )
