@@ -78,7 +78,7 @@ def _date(prop) -> str:
 
 
 def _ensure_eval_db() -> str:
-    """Create the Eval Results database if it doesn't exist. Returns its ID."""
+    """Return the Eval Results DB ID, searching Notion first before creating."""
     global NOTION_EVAL_DB_ID
 
     if NOTION_EVAL_DB_ID:
@@ -86,9 +86,25 @@ def _ensure_eval_db() -> str:
             notion.databases.retrieve(NOTION_EVAL_DB_ID)
             return NOTION_EVAL_DB_ID
         except Exception:
-            pass  # DB gone — recreate
+            NOTION_EVAL_DB_ID = ""  # reset — fall through to search/create
 
-    # Find parent page from KB DB
+    # Search for an existing "Eval Results" DB before creating a new one
+    # (prevents duplicate DBs across CI runs where NOTION_EVAL_DB_ID isn't set)
+    search_resp = httpx.post(
+        "https://api.notion.com/v1/search",
+        headers=NOTION_HEADERS,
+        json={"query": "Eval Results", "filter": {"value": "database", "property": "object"}},
+    ).json()
+    for result in search_resp.get("results", []):
+        title_items = result.get("title", [])
+        title = "".join(t.get("plain_text", "") for t in title_items)
+        if title == "Eval Results":
+            NOTION_EVAL_DB_ID = result["id"]
+            print(f"  Found existing Eval Results DB: {NOTION_EVAL_DB_ID}")
+            print(f"  Tip: add NOTION_EVAL_DB_ID={NOTION_EVAL_DB_ID} as a GitHub secret to skip this search.")
+            return NOTION_EVAL_DB_ID
+
+    # Not found — create it
     kb_db = notion.databases.retrieve(NOTION_DB_ID)
     parent = kb_db.get("parent", {})
 
