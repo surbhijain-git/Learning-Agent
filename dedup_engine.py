@@ -30,14 +30,44 @@ CHROMA_PATH     = Path("chroma_db")
 DOC_COLLECTION  = "learning_agent_kb"
 CLAIM_COLLECTION = "learning_agent_kb_claims"
 
-# Doc-level thresholds
-COVERED_THRESHOLD = 0.82
-RELATED_THRESHOLD = 0.65
+# ── Domain baseline calibration ───────────────────────────────────────────────
+# all-MiniLM-L6-v2 assigns ~0.45-0.55 cosine similarity to ANY two AI articles
+# just from shared vocabulary (tokens like "model", "agent", "LLM", "strategy").
+# Raw scores cluster at 0.5-0.6 for everything, making thresholds meaningless.
+#
+# Fix: normalize raw scores relative to this domain baseline so:
+#   0.0 = same broad topic (AI), genuinely different content → NEW
+#   0.5 = same AI sub-topic, overlapping framing → RELATED
+#   1.0 = identical content (near-verbatim duplicate) → COVERED
+#
+# What the two comparison layers evaluate:
+#   Doc-level:   key_concepts tags + full "Key Claims & Learnings" body text
+#                → answers "is this document covering the same ground?"
+#   Claim-level: each individual bullet compared against all stored bullets
+#                → answers "has this specific insight appeared before?"
+#
+DOMAIN_BASELINE       = 0.50   # ambient similarity floor for AI-focused articles
+CLAIM_DOMAIN_BASELINE = 0.38   # shorter texts → lower baseline
 
-# Claim-level thresholds (claim vs claim — symmetric, no dilution)
-# all-MiniLM-L6-v2 scores: near-verbatim ~0.90-0.95, same concept rephrased ~0.60-0.72
-CLAIM_COVERED_THRESHOLD = 0.72
-CLAIM_RELATED_THRESHOLD = 0.55
+# Doc-level thresholds (applied to NORMALIZED scores 0.0–1.0)
+# COVERED: normalized ≥ 0.65 → raw ≥ 0.50 + 0.65×0.50 = 0.825
+# RELATED: normalized ≥ 0.25 → raw ≥ 0.50 + 0.25×0.50 = 0.625
+COVERED_THRESHOLD = 0.65
+RELATED_THRESHOLD = 0.25
+
+# Claim-level thresholds (applied to NORMALIZED scores)
+# COVERED: normalized ≥ 0.68 → raw ≥ 0.38 + 0.68×0.62 = 0.80
+# RELATED: normalized ≥ 0.22 → raw ≥ 0.38 + 0.22×0.62 = 0.52
+CLAIM_COVERED_THRESHOLD = 0.68
+CLAIM_RELATED_THRESHOLD = 0.22
+
+
+def _normalize(raw: float, baseline: float = DOMAIN_BASELINE) -> float:
+    """Rescale raw cosine similarity relative to the domain baseline.
+    Maps [baseline, 1.0] → [0.0, 1.0]. Scores at or below baseline → 0.0."""
+    if raw <= baseline:
+        return 0.0
+    return round((raw - baseline) / (1.0 - baseline), 4)
 
 _doc_col   = None
 _claim_col = None
@@ -221,7 +251,8 @@ def concept_novelty_report(
         for dist, meta in zip(res["distances"][0], res["metadatas"][0]):
             if meta.get("page_id") == self_page_id:
                 continue
-            best_score = 1.0 - dist
+            raw = 1.0 - dist
+            best_score = _normalize(raw, CLAIM_DOMAIN_BASELINE)
             best_title = meta.get("title", "")
             break
 
@@ -302,7 +333,8 @@ def check_novelty(
         for dist, rid, meta in zip(res["distances"][0], res["ids"][0], res["metadatas"][0]):
             if rid == notion_page_id:
                 continue
-            score = 1.0 - dist
+            raw = 1.0 - dist
+            score = _normalize(raw)
             match_id = rid
             match_title = meta.get("title", "")
             break
@@ -315,7 +347,7 @@ def check_novelty(
         else:
             verdict = "NEW"
 
-    # 3. Print doc-level result
+    # 3. Print doc-level result (normalized score: 0.0=just-AI-topic, 1.0=identical)
     s = f"{score:.2f}"
     if verdict == "COVERED":
         print(f"  COVERED ({s}): similar to [{match_title}]")
@@ -394,7 +426,8 @@ def check_novelty_standalone(
             include=["distances", "metadatas"],
         )
         for dist, meta in zip(res["distances"][0], res["metadatas"][0]):
-            score = 1.0 - dist
+            raw = 1.0 - dist
+            score = _normalize(raw)
             match_title = meta.get("title", "")
             break
         if score >= COVERED_THRESHOLD:
@@ -534,30 +567,32 @@ def self_test():
         body = _get_page_body_text(page_id)
         embed_text = make_embed_text(key_concepts, body)
         res = doc_col.query(query_texts=[embed_text], n_results=1, include=["distances", "metadatas"])
-        sim = 1.0 - res["distances"][0][0]
+        raw = 1.0 - res["distances"][0][0]
+        sim = _normalize(raw)
         top = res["metadatas"][0][0].get("title", "")
-        print(f"  Testing: {title[:60]}  →  match: [{top[:50]}]  sim={sim:.2f}")
+        print(f"  Testing: {title[:60]}  →  match: [{top[:50]}]  raw={raw:.2f}  normalized={sim:.2f}")
         if sim >= COVERED_THRESHOLD:
-            print(f"  Test 1 PASS — {sim:.2f} >= {COVERED_THRESHOLD}\n")
+            print(f"  Test 1 PASS — normalized {sim:.2f} >= {COVERED_THRESHOLD}\n")
         else:
-            msg = f"Test 1 FAIL: doc similarity {sim:.2f} < {COVERED_THRESHOLD}"
+            msg = f"Test 1 FAIL: normalized similarity {sim:.2f} < {COVERED_THRESHOLD} (raw={raw:.2f})"
             print(f"  {msg}\n"); failures.append(msg)
     else:
         print("  SKIP — no embedded pages.\n")
 
     # ── Test 2: doc NEW ───────────────────────────────────────────────────────
-    print("[Test 2] Doc NEW — supply chain text...")
+    print("[Test 2] Doc NEW — supply chain text (expect normalized = 0.0)...")
     new_text = ("Cold chain disruption in pharmaceutical freight forwarding. "
                 "Warehouse inventory LIFO/FIFO optimisation. Cross-border customs clearance. "
                 "Port congestion, demurrage charges, 3PL vendor selection.")
     res = doc_col.query(query_texts=[new_text], n_results=1, include=["distances", "metadatas"])
-    sim = 1.0 - res["distances"][0][0]
+    raw = 1.0 - res["distances"][0][0]
+    sim = _normalize(raw)
     top = res["metadatas"][0][0].get("title", "") if res["metadatas"] else ""
-    print(f"  Nearest match: [{top[:60]}]  sim={sim:.2f}")
+    print(f"  Nearest match: [{top[:60]}]  raw={raw:.2f}  normalized={sim:.2f}")
     if sim < RELATED_THRESHOLD:
-        print(f"  Test 2 PASS — {sim:.2f} < {RELATED_THRESHOLD}\n")
+        print(f"  Test 2 PASS — normalized {sim:.2f} < {RELATED_THRESHOLD}\n")
     else:
-        msg = f"Test 2 FAIL: {sim:.2f} >= {RELATED_THRESHOLD}"
+        msg = f"Test 2 FAIL: normalized {sim:.2f} >= {RELATED_THRESHOLD} (raw={raw:.2f})"
         print(f"  {msg}\n"); failures.append(msg)
 
     # ── Test 3: claim COVERED ─────────────────────────────────────────────────
@@ -566,26 +601,28 @@ def self_test():
         # Use text very close to an actual stored claim — should score ~0.90+
         known_claim = "Distribution incumbency is now more defensible than model quality: Google Gemini reaches two billion monthly searchers through AI Overviews regardless of benchmark rankings"
         res = claim_col.query(query_texts=[known_claim], n_results=1, include=["distances", "metadatas"])
-        sim = 1.0 - res["distances"][0][0]
+        raw = 1.0 - res["distances"][0][0]
+        sim = _normalize(raw, CLAIM_DOMAIN_BASELINE)
         top = res["metadatas"][0][0].get("title", "") if res["metadatas"] else ""
-        print(f"  Nearest match: [{top[:60]}]  sim={sim:.2f}")
+        print(f"  Nearest match: [{top[:60]}]  raw={raw:.2f}  normalized={sim:.2f}")
         if sim >= CLAIM_COVERED_THRESHOLD:
-            print(f"  Test 3 PASS — {sim:.2f} >= {CLAIM_COVERED_THRESHOLD} (COVERED)\n")
+            print(f"  Test 3 PASS — normalized {sim:.2f} >= {CLAIM_COVERED_THRESHOLD} (COVERED)\n")
         else:
-            msg = f"Test 3 FAIL: {sim:.2f} < {CLAIM_COVERED_THRESHOLD} — known theme not flagged COVERED"
+            msg = f"Test 3 FAIL: normalized {sim:.2f} < {CLAIM_COVERED_THRESHOLD} — known theme not flagged COVERED (raw={raw:.2f})"
             print(f"  {msg}\n"); failures.append(msg)
 
         # ── Test 4: claim NEW ─────────────────────────────────────────────────
         print("[Test 4] Claim NEW — off-topic claim vs claims index...")
         off_claim = "Autonomous drone swarms use mesh networking for last-mile pharmaceutical logistics"
         res = claim_col.query(query_texts=[off_claim], n_results=1, include=["distances", "metadatas"])
-        sim = 1.0 - res["distances"][0][0]
+        raw = 1.0 - res["distances"][0][0]
+        sim = _normalize(raw, CLAIM_DOMAIN_BASELINE)
         top = res["metadatas"][0][0].get("title", "") if res["metadatas"] else ""
-        print(f"  Nearest match: [{top[:60]}]  sim={sim:.2f}")
+        print(f"  Nearest match: [{top[:60]}]  raw={raw:.2f}  normalized={sim:.2f}")
         if sim < CLAIM_RELATED_THRESHOLD:
-            print(f"  Test 4 PASS — {sim:.2f} < {CLAIM_RELATED_THRESHOLD} (NEW)\n")
+            print(f"  Test 4 PASS — normalized {sim:.2f} < {CLAIM_RELATED_THRESHOLD} (NEW)\n")
         else:
-            msg = f"Test 4 FAIL: {sim:.2f} >= {CLAIM_RELATED_THRESHOLD}"
+            msg = f"Test 4 FAIL: normalized {sim:.2f} >= {CLAIM_RELATED_THRESHOLD} (raw={raw:.2f})"
             print(f"  {msg}\n"); failures.append(msg)
     else:
         print("[Test 3/4] SKIP — claims collection empty. Run sync first.\n")
