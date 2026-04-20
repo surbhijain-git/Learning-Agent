@@ -24,7 +24,8 @@ from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunct
 load_dotenv(find_dotenv(usecwd=True), override=True)
 
 notion = Client(auth=os.getenv("NOTION_TOKEN"))
-NOTION_DB_ID = os.getenv("NOTION_DB_ID")
+NOTION_DB_ID           = os.getenv("NOTION_DB_ID")
+NOTION_READING_LIST_ID = os.getenv("NOTION_READING_LIST_ID", "")
 
 CHROMA_PATH     = Path("chroma_db")
 DOC_COLLECTION  = "learning_agent_kb"
@@ -591,6 +592,94 @@ def rescore_all():
     print(f"\nRescore complete. {updated} updated, {skipped} skipped.")
 
 
+# ── Rescore Reading List ──────────────────────────────────────────────────────
+
+def rescore_reading_list():
+    """
+    Re-compute normalized Similarity_Score + Verdict for all Reading List entries.
+    Re-embeds each item's summary text and queries ChromaDB for nearest KB neighbor.
+    """
+    import httpx
+
+    if not NOTION_READING_LIST_ID:
+        print("NOTION_READING_LIST_ID not set — skipping.")
+        return
+
+    HEADERS = {
+        "Authorization": f"Bearer {os.getenv('NOTION_TOKEN', '')}",
+        "Notion-Version": "2022-06-28",
+        "Content-Type": "application/json",
+    }
+
+    # Fetch all Reading List pages
+    pages, cursor = [], None
+    while True:
+        body = {"page_size": 100}
+        if cursor:
+            body["start_cursor"] = cursor
+        resp = httpx.post(
+            f"https://api.notion.com/v1/databases/{NOTION_READING_LIST_ID}/query",
+            headers=HEADERS, json=body,
+        ).json()
+        pages.extend(resp.get("results", []))
+        if not resp.get("has_more"):
+            break
+        cursor = resp.get("next_cursor")
+
+    print(f"Rescoring {len(pages)} Reading List entries...\n")
+
+    doc_col = get_collection()
+    if doc_col.count() == 0:
+        print("ChromaDB KB collection is empty — run sync first.")
+        return
+
+    updated = 0
+    for i, page in enumerate(pages, 1):
+        props = page["properties"]
+
+        title_items = props.get("Title", {}).get("title", [])
+        title = "".join(t.get("plain_text", "") for t in title_items)
+
+        summary_items = props.get("Summary", {}).get("rich_text", [])
+        summary_text = "".join(t.get("plain_text", "") for t in summary_items)
+
+        if not summary_text.strip():
+            print(f"  [{i:02d}/{len(pages)}] SKIP (no summary): {title[:55]}")
+            continue
+
+        # Embed summary text (no key_concepts available on Reading List)
+        embed_text = make_embed_text([], summary_text)
+
+        score, match_title, verdict = 0.0, "", "NEW"
+        n = min(6, doc_col.count())
+        res = doc_col.query(query_texts=[embed_text], n_results=n,
+                            include=["distances", "metadatas"])
+        for dist, meta in zip(res["distances"][0], res["metadatas"][0]):
+            raw = 1.0 - dist
+            score = _normalize(raw)
+            match_title = meta.get("title", "")
+            break
+
+        if score >= COVERED_THRESHOLD:
+            verdict = "COVERED"
+        elif score >= RELATED_THRESHOLD:
+            verdict = "RELATED"
+
+        # Update Notion
+        notion.pages.update(
+            page_id=page["id"],
+            properties={
+                "Similarity_Score": {"number": score},
+                "Verdict":          {"select": {"name": verdict}},
+            },
+        )
+        print(f"  [{i:02d}/{len(pages)}] {title[:55]:<55}  {verdict:<8}  score={score:.3f}  [{match_title[:35]}]")
+        updated += 1
+        time.sleep(0.15)
+
+    print(f"\nRescore complete. {updated} Reading List entries updated.")
+
+
 # ── Self-test ─────────────────────────────────────────────────────────────────
 
 def self_test():
@@ -704,6 +793,7 @@ def main():
     check_p.add_argument("page_id")
 
     sub.add_parser("rescore", help="Re-compute normalized Similarity_Score for all KB entries in Notion")
+    sub.add_parser("rescore-rl", help="Re-compute normalized Similarity_Score for all Reading List entries")
     sub.add_parser("test", help="Run self-test")
 
     args = parser.parse_args()
@@ -712,6 +802,8 @@ def main():
         sync_all(force=getattr(args, "force", False))
     elif args.cmd == "rescore":
         rescore_all()
+    elif args.cmd == "rescore-rl":
+        rescore_reading_list()
     elif args.cmd == "check":
         result = check_novelty(args.page_id)
         print(f"Verdict: {result['verdict']}  Score: {result['score']:.4f}")
