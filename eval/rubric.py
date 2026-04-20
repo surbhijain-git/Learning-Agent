@@ -111,6 +111,49 @@ SCORING_ANCHORS = {
 # ── Few-shot examples for the Judge ──────────────────────────────────────────
 FEW_SHOT_EXAMPLES = [
     {
+        "label": "PIPELINE FAILURE example (pipeline_integrity = 1)",
+        "entry": {
+            "title": "Notion API Patterns for Agents",
+            "summary": "Notion's API has breaking changes in v2.2.1 that drop databases.query. Agents must use direct httpx calls instead of the SDK.",
+            "key_claims": [
+                "notion-client v2.2.1 dropped databases.query silently",
+                "Direct httpx.post with Notion-Version: 2022-06-28 is the stable pattern",
+                "SDK updates can silently break downstream agents without test coverage",
+            ],
+            "concrete_learnings": [
+                "Use httpx.post to https://api.notion.com/v1/databases/{id}/query directly",
+                "Pin Notion-Version header to 2022-06-28 for stability",
+            ],
+            "key_concepts": ["Notion API", "SDK versioning", "Agent reliability"],
+            "verdict": "NEW",
+        },
+        "scores": {
+            "extraction_fidelity": 4,
+            "insight_depth": 4,
+            "novelty_calibration": 3,
+            "pipeline_integrity": 1,
+            "structural_quality": 4,
+            "strategic_relevance": 3,
+        },
+        "reasoning": {
+            "extraction_fidelity": "Accurately reflects the source content with no hallucinations.",
+            "insight_depth": "SDK version-breaking-change is a non-obvious and actionable discovery.",
+            "novelty_calibration": "Directionally NEW but KB may have related API reliability entries.",
+            "pipeline_integrity": (
+                "Critical pipeline failures on this entry: "
+                "(1) newsletter fetched from INBOX instead of INBOX/Newsletter — entire newsletter category was silently skipped for weeks; "
+                "(2) continue-on-error: true on the newsletter sync step swallowed Gmail auth failures with no visible signal; "
+                "(3) .seen_ids file not persisted in CI means same emails reprocessed every daily run, burning tokens; "
+                "(4) YouTube items marked Failed in Notion with no local retry path — items permanently stuck. "
+                "This entry only appeared in KB by chance; the pipeline integrity is broken."
+            ),
+            "structural_quality": "Fields complete and specific. Claims name exact version numbers and API patterns.",
+            "strategic_relevance": "Relevant to AI product and agent-building roles.",
+        },
+        "weighted_score": 2.95,
+        "verdict": "REVIEW",
+    },
+    {
         "label": "PASS example",
         "entry": {
             "title": "Claude Model Tiering & Cost Optimization",
@@ -257,7 +300,7 @@ Scores:
     return f"""You are a Judge LLM evaluating the output quality of a Content Intelligence Agent.
 The agent ingests YouTube videos, newsletters, and meeting notes, extracts structured knowledge using Claude, and scores novelty against an existing Knowledge Base.
 
-Your job is to evaluate a KB entry on 5 dimensions and return a JSON score.
+Your job is to evaluate a KB entry on 6 dimensions and return a JSON score.
 
 ## Rubric Dimensions
 {dim_block}
@@ -281,6 +324,7 @@ Return ONLY valid JSON, no markdown fences:
     "extraction_fidelity": <1-5>,
     "insight_depth": <1-5>,
     "novelty_calibration": <1-5>,
+    "pipeline_integrity": <1-5>,
     "structural_quality": <1-5>,
     "strategic_relevance": <1-5>
   }},
@@ -288,10 +332,11 @@ Return ONLY valid JSON, no markdown fences:
     "extraction_fidelity": "<one sentence>",
     "insight_depth": "<one sentence>",
     "novelty_calibration": "<one sentence>",
+    "pipeline_integrity": "<one sentence — note any missing fields, wrong source location, reprocessing, or silent failures>",
     "structural_quality": "<one sentence>",
     "strategic_relevance": "<one sentence>"
   }},
-  "weighted_score": <float>,
+  "weighted_score": <float — do NOT compute this yourself, it will be recalculated>,
   "verdict": "PASS" | "REVIEW" | "FAIL",
   "summary": "<one sentence overall assessment>"
 }}"""

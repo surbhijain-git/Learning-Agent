@@ -460,8 +460,6 @@ def main():
     print(f"Eval Agent — mode: {args.mode}{' (dry run)' if args.dry_run else ''}")
     print(f"{'='*60}\n")
 
-    pipeline_health_report()
-
     eval_db_id = None
     if not args.dry_run:
         eval_db_id = _ensure_eval_db()
