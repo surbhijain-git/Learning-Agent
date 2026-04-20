@@ -163,11 +163,27 @@ def add_to_queue(identifier: str, source_type: str, content: str = None):
     return page["id"]
 
 def _query_new_queue() -> list[dict]:
-    resp = _notion_query(
+    """Return pending items. In CI, exclude YouTube Failed items (blocked by YouTube).
+    Locally, also retry Failed YouTube items so they're not permanently stuck."""
+    pending_resp = _notion_query(
         _queue_id(),
         filter={"property": "Status", "select": {"is_empty": True}},
     )
-    return resp.get("results", [])
+    results = pending_resp.get("results", [])
+
+    # Locally: also pick up Failed YouTube items for retry
+    if not os.getenv("GITHUB_ACTIONS"):
+        failed_resp = _notion_query(
+            _queue_id(),
+            filter={"property": "Status", "select": {"equals": "Failed"}},
+        )
+        for page in failed_resp.get("results", []):
+            title_items = page["properties"].get("URL", {}).get("title", [])
+            url = "".join(t.get("text", {}).get("content", "") for t in title_items).strip()
+            if _is_youtube(url):
+                results.append(page)
+
+    return results
 
 def _set_queue_status(page_id: str, status: str):
     notion.pages.update(
@@ -413,6 +429,10 @@ def process_page(page: dict):
         if notion_content or source_type in FILE_SOURCE_TYPES or (not url.startswith("http") and Path(url).suffix):
             _process_file(url, queue_page_id, source_type or "Notes", notion_content=notion_content)
         elif _is_youtube(url):
+            if os.getenv("GITHUB_ACTIONS"):
+                log.info("  YouTube skipped in CI — GitHub Actions IPs blocked by YouTube. Will be picked up on local run.")
+                _set_queue_status(queue_page_id, "")  # reset to pending for local poll
+                return
             _process_youtube(url, queue_page_id)
         else:
             _process_web_link(url, queue_page_id)
