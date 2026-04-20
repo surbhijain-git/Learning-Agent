@@ -417,9 +417,9 @@
       <div class="layer-content">
         <div class="pnode pnode-dedup">🔍 ChromaDB<span>all-MiniLM-L6-v2<br>384-dim embeddings</span></div>
         <div class="pipe-arrow">→</div>
-        <div class="pnode pnode-dedup">Doc-level<span>COVERED ≥ 0.82<br>RELATED ≥ 0.65</span></div>
+        <div class="pnode pnode-dedup">Doc-level<span>COVERED ≥ 0.65<br>RELATED ≥ 0.20</span></div>
         <div class="pipe-arrow">+</div>
-        <div class="pnode pnode-dedup">Claim-level<span>COVERED ≥ 0.72<br>RELATED ≥ 0.55</span></div>
+        <div class="pnode pnode-dedup">Claim-level<span>COVERED ≥ 0.68<br>RELATED ≥ 0.18</span></div>
         <div class="pipe-arrow">→</div>
         <div class="pnode pnode-dedup">Verdict<span>🟢 NEW · 🟡 RELATED<br>🔵 COVERED</span></div>
       </div>
@@ -592,7 +592,7 @@
       </div>
       <div>
         <div style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--accent); margin-bottom:8px;">What counts as new</div>
-        <p style="font-size:13px; color:var(--muted); line-height:1.6;">Novelty thresholds (COVERED ≥ 0.82, RELATED ≥ 0.65 doc-level; stricter at claim level) encode the judgment that near-duplicate angles still count as RELATED if they add a meaningful new lens.</p>
+        <p style="font-size:13px; color:var(--muted); line-height:1.6;">Novelty thresholds (COVERED ≥ 0.65, RELATED ≥ 0.20 doc-level; COVERED ≥ 0.68, RELATED ≥ 0.18 claim-level) are applied to domain-normalized scores where 0.0 = same broad AI topic and 1.0 = identical content. Near-duplicate angles still count as RELATED if they add a meaningful new lens.</p>
       </div>
       <div>
         <div style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--accent); margin-bottom:8px;">What's worth keeping</div>

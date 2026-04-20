@@ -52,15 +52,15 @@ CLAIM_DOMAIN_BASELINE = 0.38   # shorter texts → lower baseline
 
 # Doc-level thresholds (applied to NORMALIZED scores 0.0–1.0)
 # COVERED: normalized ≥ 0.65 → raw ≥ 0.50 + 0.65×0.50 = 0.825
-# RELATED: normalized ≥ 0.25 → raw ≥ 0.50 + 0.25×0.50 = 0.625
+# RELATED: normalized ≥ 0.20 → raw ≥ 0.50 + 0.20×0.50 = 0.60
 COVERED_THRESHOLD = 0.65
-RELATED_THRESHOLD = 0.25
+RELATED_THRESHOLD = 0.20
 
 # Claim-level thresholds (applied to NORMALIZED scores)
 # COVERED: normalized ≥ 0.68 → raw ≥ 0.38 + 0.68×0.62 = 0.80
-# RELATED: normalized ≥ 0.22 → raw ≥ 0.38 + 0.22×0.62 = 0.52
+# RELATED: normalized ≥ 0.18 → raw ≥ 0.38 + 0.18×0.62 = 0.49
 CLAIM_COVERED_THRESHOLD = 0.68
-CLAIM_RELATED_THRESHOLD = 0.22
+CLAIM_RELATED_THRESHOLD = 0.18
 
 
 def _normalize(raw: float, baseline: float = DOMAIN_BASELINE) -> float:
@@ -647,8 +647,11 @@ def rescore_reading_list():
             print(f"  [{i:02d}/{len(pages)}] SKIP (no summary): {title[:55]}")
             continue
 
-        # Embed summary text (no key_concepts available on Reading List)
-        embed_text = make_embed_text([], summary_text)
+        # Use full page body (claims/learnings bullets) for richer embedding
+        # Summary alone is 2-3 sentences vs KB entries which have 10-20 claim bullets
+        body_bullets = _get_page_body_text(page["id"])
+        body_text = summary_text + ("\n\n" + body_bullets if body_bullets else "")
+        embed_text = make_embed_text([], body_text)
 
         score, match_title, verdict = 0.0, "", "NEW"
         n = min(6, doc_col.count())
