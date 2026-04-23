@@ -465,6 +465,49 @@ def _get_cache_key(source: str, source_type: str) -> str:
     return f"file_{safe}"
 
 
+def _summary_from_rl_page(entry: dict) -> dict:
+    """Reconstruct a summary dict from an existing Reading List Notion page.
+    Used when the cached export JSON is missing (e.g. cross-session promote in CI).
+    Reads the page body bullets from 🟢 New and 🟡 New Angle sections."""
+    props = entry["properties"]
+    title = "".join(t.get("plain_text", "") for t in props.get("Title", {}).get("title", []))
+    summary_text = "".join(t.get("plain_text", "") for t in props.get("Summary", {}).get("rich_text", []))
+
+    blocks = notion.blocks.children.list(block_id=entry["id"]).get("results", [])
+    new_items, related_items = [], []
+    current_section = None
+
+    for block in blocks:
+        bt = block.get("type", "")
+        if bt == "heading_2":
+            heading = "".join(t.get("plain_text", "") for t in block.get("heading_2", {}).get("rich_text", []))
+            if "New \u2014 Learn" in heading or "New—Learn" in heading or "Learn These" in heading:
+                current_section = "new"
+            elif "New Angle" in heading:
+                current_section = "related"
+            else:
+                current_section = None
+        elif bt == "bulleted_list_item" and current_section in ("new", "related"):
+            text = "".join(t.get("plain_text", "") for t in block.get("bulleted_list_item", {}).get("rich_text", []))
+            text = text.split("  \u2192  ")[0].strip()  # strip "→ extends: ..." suffix on related items
+            if text and "No new concepts" not in text and "No related" not in text:
+                if current_section == "new":
+                    new_items.append(text)
+                else:
+                    related_items.append(text)
+
+    all_claims = new_items + related_items
+    return {
+        "title":               title,
+        "summary":             summary_text,
+        "core_argument":       summary_text,
+        "so_what":             "",
+        "key_claims":          related_items or all_claims[:3],
+        "concrete_learnings":  new_items or all_claims,
+        "key_concepts":        [],
+    }
+
+
 def promote_entry(entry: dict):
     rl_page_id  = entry["id"]
     title_items = entry["properties"].get("Title", {}).get("title", [])
@@ -476,16 +519,21 @@ def promote_entry(entry: dict):
     log.info(f"Promoting: {title}")
 
     try:
-        cache_key   = _get_cache_key(source, source_type)
-        cached      = _load_export(cache_key)
-        if not cached:
-            raise FileNotFoundError(
-                f"Cached summary not found ({cache_key}.json). "
-                "Re-submit the URL/file to the Ingest Queue / db_seeder to regenerate."
-            )
+        cache_key = _get_cache_key(source, source_type)
+        cached    = _load_export(cache_key)
 
-        meta    = cached.pop("_meta", {})
-        summary = cached  # everything except _meta
+        if cached:
+            cached.pop("_meta", {})
+            summary = cached
+        else:
+            # Cache missing (e.g. promote runs in a different CI session than poll).
+            # Reconstruct summary from the Reading List page content directly.
+            log.info(f"  Cache miss — rebuilding summary from Reading List page")
+            summary = _summary_from_rl_page(entry)
+            if not summary.get("title"):
+                raise FileNotFoundError(
+                    f"Cached summary not found ({cache_key}.json) and could not rebuild from RL page."
+                )
 
         # Write clean entry to KB
         kb_page_id = rl.write_to_kb(summary, source, source_type)
@@ -543,10 +591,11 @@ def poll(interval: int = 30, once: bool = False):
         time.sleep(interval)
 
 
-def poll_promote(interval: int = 60):
-    log.info(f"Promote poller: checking Reading List every {interval}s  |  DB: {_rl_id()}")
+def poll_promote(interval: int = 60, once: bool = False):
+    log.info(f"Promote poller  |  DB: {_rl_id()}  |  mode: {'once' if once else f'every {interval}s'}")
     log.info("Mark a Reading List entry as 'Read' to promote it to the KB.")
-    log.info("Ctrl-C to stop.")
+    if not once:
+        log.info("Ctrl-C to stop.")
     while True:
         try:
             entries = _query_read_entries()
@@ -559,6 +608,9 @@ def poll_promote(interval: int = 60):
             break
         except Exception as e:
             log.error(f"Promote poll error: {e}")
+        if once:
+            log.info("Promote --once complete.")
+            break
         time.sleep(interval)
 
 
@@ -574,12 +626,13 @@ def main():
 
     promo_p = sub.add_parser("promote", help="Poll Reading List (Read) → KB")
     promo_p.add_argument("--interval", type=int, default=60)
+    promo_p.add_argument("--once", action="store_true", help="Promote all Read entries once then exit (used by CI)")
 
     args = parser.parse_args()
     if args.cmd == "poll":
         poll(interval=args.interval, once=args.once)
     elif args.cmd == "promote":
-        poll_promote(interval=args.interval)
+        poll_promote(interval=args.interval, once=args.once)
     else:
         parser.print_help()
 
