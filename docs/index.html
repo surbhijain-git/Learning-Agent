@@ -342,6 +342,24 @@
     </div>
   </div>
 
+  <div class="section-title">📊 Topic Concentration</div>
+  <div class="pipeline-card" id="topic-concentration-card" style="padding:28px 32px;">
+    <p class="pipeline-desc" style="margin-bottom:24px;">
+      Weekly breakdown of KB entries by learning goal. Haiku classifies every entry into one of five questions and compares actual coverage to target. Runs every Sunday night.
+    </p>
+
+    <!-- Category bars -->
+    <div id="topic-bars" style="display:flex; flex-direction:column; gap:18px;"></div>
+
+    <!-- Recommendation -->
+    <div id="topic-recommendation" style="margin-top:20px;"></div>
+
+    <div style="margin-top:20px; padding:12px 16px; background:var(--bg); border-radius:8px; font-size:12px; color:var(--muted);">
+      Run manually: <code style="background:var(--surface); padding:2px 6px; border-radius:4px; font-size:11px;">python topic_concentration.py</code>
+      &nbsp;·&nbsp; dry-run: <code style="background:var(--surface); padding:2px 6px; border-radius:4px; font-size:11px;">python topic_concentration.py --dry-run</code>
+    </div>
+  </div>
+
   <div class="section-title">Recent Activity</div>
   <div class="two-col">
     <div class="card">
@@ -500,29 +518,6 @@
     </div>
   </div>
 
-  <!-- Topic Concentration -->
-  <div class="section-title">📊 Topic Concentration</div>
-  <div class="pipeline-card" id="topic-concentration-card" style="padding:28px 32px;">
-    <p class="pipeline-desc" style="margin-bottom:24px;">
-      Weekly breakdown of KB entries by learning goal. Haiku classifies every entry into one of five questions and compares actual coverage to target. Runs every Sunday night.
-    </p>
-
-    <!-- Target legend -->
-    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:24px;" id="topic-legend">
-      <span class="loading">Loading topic data…</span>
-    </div>
-
-    <!-- Category bars -->
-    <div id="topic-bars" style="display:flex; flex-direction:column; gap:14px;"></div>
-
-    <!-- Recommendation -->
-    <div id="topic-recommendation" style="margin-top:20px;"></div>
-
-    <div style="margin-top:20px; padding:12px 16px; background:var(--bg); border-radius:8px; font-size:12px; color:var(--muted);">
-      Run manually: <code style="background:var(--surface); padding:2px 6px; border-radius:4px; font-size:11px;">python topic_concentration.py</code>
-      &nbsp;·&nbsp; dry-run: <code style="background:var(--surface); padding:2px 6px; border-radius:4px; font-size:11px;">python topic_concentration.py --dry-run</code>
-    </div>
-  </div>
 
 </div>
 </div>
@@ -1087,56 +1082,61 @@ python eval/eval_agent.py weekly           # score everything from the past 7 da
   fetch('topic_data.json')
     .then(r => r.json())
     .then(td => {
-      const legend = document.getElementById('topic-legend');
-      const bars   = document.getElementById('topic-bars');
-      const rec    = document.getElementById('topic-recommendation');
+      const bars = document.getElementById('topic-bars');
+      const rec  = document.getElementById('topic-recommendation');
 
-      // Legend chips
-      legend.innerHTML = td.categories.map(c =>
-        `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;background:#f3f4f6;font-size:12px;font-weight:500;">
-          <span style="width:8px;height:8px;border-radius:50%;background:${c.color};display:inline-block;"></span>
-          ${c.question} <span style="color:#6b7280;font-weight:400;">${c.target}% target</span>
-        </span>`
-      ).join('');
+      if (!td.categories || !td.categories.length) {
+        bars.innerHTML = '<span style="color:#6b7280;font-size:12px;">Run <code>python topic_concentration.py</code> to generate topic data.</span>';
+        return;
+      }
 
-      // Category bars
+      // Category bars — all on a shared 0–100% scale
+      // Bar track = 100% wide. Actual fill = c.pct% wide. Target tick = a vertical line at c.target%.
       bars.innerHTML = td.categories.map(c => {
-        const delta     = (c.pct - c.target).toFixed(1);
         const isOver    = c.delta > 3;
         const isUnder   = c.delta < -3;
         const statusCls = isOver ? 'color:#d97706' : (isUnder ? 'color:#dc2626' : 'color:#16a34a');
         const statusLbl = isOver
           ? `over-indexed ${Math.abs(c.delta).toFixed(0)}pp ⚠️`
           : (isUnder ? `under-indexed ${Math.abs(c.delta).toFixed(0)}pp 📉` : 'on target ✅');
-        const barPct    = Math.min(c.pct, 50) * 2;  // scale to 100% width at 50%+ actual
-        const tgtLeft   = Math.min(c.target, 50) * 2;
+        const samples = c.entries && c.entries.length
+          ? c.entries.slice(0,3).join('  ·  ') + (c.entries.length > 3 ? '  …' : '')
+          : 'none yet';
         return `
           <div>
-            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
               <div>
-                <span style="font-size:13px;font-weight:600;">${c.question}</span>
-                <span style="font-size:11px;color:#6b7280;margin-left:6px;">${c.label}</span>
+                <span style="font-size:13px;font-weight:700;">${c.question}</span>
+                <span style="font-size:11px;color:#6b7280;margin-left:8px;">${c.label}</span>
               </div>
-              <div style="font-size:12px;${statusCls};">${c.pct}% · ${statusLbl}</div>
+              <div style="font-size:12px;font-weight:600;${statusCls};">${c.pct}%&nbsp;&nbsp;${statusLbl}</div>
             </div>
-            <div style="position:relative;height:14px;background:#f3f4f6;border-radius:7px;overflow:visible;">
-              <div style="height:100%;width:${barPct}%;background:${c.color};border-radius:7px;transition:width 0.5s;opacity:0.85;"></div>
-              <!-- target tick -->
-              <div style="position:absolute;top:-3px;left:${tgtLeft}%;width:2px;height:20px;background:#374151;border-radius:1px;" title="Target: ${c.target}%"></div>
+            <!-- Bar track: 0–100% scale -->
+            <div style="position:relative;height:16px;background:#f3f4f6;border-radius:8px;overflow:visible;">
+              <!-- Actual fill -->
+              <div style="height:100%;width:${c.pct}%;background:${c.color};border-radius:8px;transition:width 0.6s;opacity:0.88;min-width:3px;"></div>
+              <!-- Target tick: dark vertical line -->
+              <div style="position:absolute;top:-4px;left:calc(${c.target}% - 1px);width:2px;height:24px;background:#1f2937;border-radius:1px;" title="Target: ${c.target}%"></div>
+              <!-- Scale labels -->
+              <div style="position:absolute;right:0;top:0;height:100%;display:flex;align-items:center;padding-right:6px;font-size:10px;color:#9ca3af;">100%</div>
             </div>
-            <div style="font-size:11px;color:#6b7280;margin-top:3px;">${c.count} entries · ${c.entries && c.entries.length ? c.entries.slice(0,3).join(' · ') + (c.entries.length > 3 ? ' …' : '') : 'none yet'}</div>
+            <!-- Target label below tick -->
+            <div style="position:relative;height:14px;margin-top:2px;">
+              <span style="position:absolute;left:calc(${c.target}% - 1px);transform:translateX(-50%);font-size:10px;color:#6b7280;white-space:nowrap;">▲ ${c.target}%</span>
+            </div>
+            <div style="font-size:11px;color:#6b7280;margin-top:2px;">${c.count} entries&nbsp;&nbsp;·&nbsp;&nbsp;${samples}</div>
           </div>`;
       }).join('');
 
       // Recommendation
-      const over  = td.categories.filter(c => c.delta >  3).map(c => `"${c.question}"`);
-      const under = td.categories.filter(c => c.delta < -3).map(c => `"${c.question}"`);
+      const over  = td.categories.filter(c => c.delta >  3).map(c => c.question);
+      const under = td.categories.filter(c => c.delta < -3).map(c => c.question);
       if (over.length || under.length) {
         const parts = [];
-        if (over.length)  parts.push(`Reduce: ${over.join(', ')}`);
-        if (under.length) parts.push(`Seek more: ${under.join(', ')}`);
+        if (over.length)  parts.push(`<strong>Reduce:</strong> ${over.join(', ')}`);
+        if (under.length) parts.push(`<strong>Seek more:</strong> ${under.join(', ')}`);
         rec.innerHTML = `<div style="padding:12px 16px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;font-size:12px;color:#92400e;">
-          💡 <strong>Rebalancing nudge:</strong> ${parts.join(' · ')}
+          💡 &nbsp;${parts.join('&nbsp; · &nbsp;')}
         </div>`;
       } else {
         rec.innerHTML = `<div style="padding:12px 16px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;font-size:12px;color:#166534;">
@@ -1145,11 +1145,8 @@ python eval/eval_agent.py weekly           # score everything from the past 7 da
       }
     })
     .catch(() => {
-      const card = document.getElementById('topic-concentration-card');
-      if (card) {
-        document.getElementById('topic-legend').innerHTML =
-          '<span style="color:#6b7280;font-size:12px;">Run <code>python topic_concentration.py</code> to generate topic data.</span>';
-      }
+      const bars = document.getElementById('topic-bars');
+      if (bars) bars.innerHTML = '<span style="color:#6b7280;font-size:12px;">Run <code>python topic_concentration.py</code> to generate topic data.</span>';
     });
 </script>
 </body>
