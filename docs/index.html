@@ -1090,8 +1090,7 @@ python eval/eval_agent.py weekly           # score everything from the past 7 da
         return;
       }
 
-      // Category bars — all on a shared 0–100% scale
-      // Bar track = 100% wide. Actual fill = c.pct% wide. Target tick = a vertical line at c.target%.
+      // Category bars — shared 0–100% scale, overflow:hidden so fill is exact
       bars.innerHTML = td.categories.map(c => {
         const isOver    = c.delta > 3;
         const isUnder   = c.delta < -3;
@@ -1111,20 +1110,20 @@ python eval/eval_agent.py weekly           # score everything from the past 7 da
               </div>
               <div style="font-size:12px;font-weight:600;${statusCls};">${c.pct}%&nbsp;&nbsp;${statusLbl}</div>
             </div>
-            <!-- Bar track: 0–100% scale -->
-            <div style="position:relative;height:16px;background:#f3f4f6;border-radius:8px;overflow:visible;">
-              <!-- Actual fill -->
-              <div style="height:100%;width:${c.pct}%;background:${c.color};border-radius:8px;transition:width 0.6s;opacity:0.88;min-width:3px;"></div>
-              <!-- Target tick: dark vertical line -->
-              <div style="position:absolute;top:-4px;left:calc(${c.target}% - 1px);width:2px;height:24px;background:#1f2937;border-radius:1px;" title="Target: ${c.target}%"></div>
-              <!-- Scale labels -->
-              <div style="position:absolute;right:0;top:0;height:100%;display:flex;align-items:center;padding-right:6px;font-size:10px;color:#9ca3af;">100%</div>
+            <!-- Outer wrapper: positioning context for the tick which sits ON TOP of the track -->
+            <div style="position:relative;">
+              <!-- Track with overflow:hidden — fill is hard-clipped at exactly c.pct% -->
+              <div style="height:14px;background:#e5e7eb;border-radius:7px;overflow:hidden;">
+                <div style="height:100%;width:${c.pct}%;background:${c.color};border-radius:7px;"></div>
+              </div>
+              <!-- Target tick: positioned over the outer wrapper at c.target% from left -->
+              <div style="position:absolute;top:-3px;left:${c.target}%;transform:translateX(-50%);width:2px;height:20px;background:#111827;border-radius:1px;" title="Target: ${c.target}%"></div>
             </div>
-            <!-- Target label below tick -->
-            <div style="position:relative;height:14px;margin-top:2px;">
-              <span style="position:absolute;left:calc(${c.target}% - 1px);transform:translateX(-50%);font-size:10px;color:#6b7280;white-space:nowrap;">▲ ${c.target}%</span>
+            <!-- Target label pinned under the tick -->
+            <div style="position:relative;height:16px;">
+              <span style="position:absolute;left:${c.target}%;transform:translateX(-50%);font-size:10px;color:#6b7280;white-space:nowrap;top:2px;">▲ ${c.target}%</span>
             </div>
-            <div style="font-size:11px;color:#6b7280;margin-top:2px;">${c.count} entries&nbsp;&nbsp;·&nbsp;&nbsp;${samples}</div>
+            <div style="font-size:11px;color:#6b7280;">${c.count} entries&nbsp;&nbsp;·&nbsp;&nbsp;${samples}</div>
           </div>`;
       }).join('');
 
