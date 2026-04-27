@@ -7,9 +7,9 @@
       "question": "Who wins?",
       "label": "Competitive Landscape",
       "target": 25,
-      "count": 30,
-      "pct": 53.6,
-      "delta": 28.6,
+      "count": 28,
+      "pct": 50.0,
+      "delta": 25.0,
       "color": "#2563eb",
       "entries": [
         "Reddit's Monetization Through AI and Authenticity",
@@ -19,9 +19,9 @@
         "AI-Powered Knowledge Work Transformation",
         "Mobility Platform Transformation Strategy",
         "AI Talent Democratization and Patient Capital",
-        "Voice AI Agent Evolution",
         "Infrastructure Control Replaces Model Quality",
-        "Infrastructure Lock-In Over Model Performance"
+        "Infrastructure Lock-In Over Model Performance",
+        "Infrastructure Control Over Model Performance"
       ]
     },
     {
@@ -29,9 +29,9 @@
       "question": "How does work change?",
       "label": "AI in Practice",
       "target": 35,
-      "count": 13,
-      "pct": 23.2,
-      "delta": -11.8,
+      "count": 14,
+      "pct": 25.0,
+      "delta": -10.0,
       "color": "#16a34a",
       "entries": [
         "Natural Language Agent Configuration",
@@ -43,7 +43,7 @@
         "AI-Powered ERP Modernization Automation",
         "Claude Model Tiering & Cost Optimization",
         "AI Capability Discontinuity and Task Mapping",
-        "Enterprise AI Systems Economics"
+        "Operational Depth vs Model Commoditization"
       ]
     },
     {
@@ -67,14 +67,15 @@
       "question": "What's being built?",
       "label": "Emerging Space",
       "target": 15,
-      "count": 5,
-      "pct": 8.9,
-      "delta": -6.1,
+      "count": 6,
+      "pct": 10.7,
+      "delta": -4.3,
       "color": "#d97706",
       "entries": [
         "Token-Incentivized Infrastructure Deployment",
         "Physics-Based Wearable Innovation",
         "Edge AI Hardware-Software Economics",
+        "Voice AI Agent Evolution",
         "DeepMind's Constraint Removal Strategy",
         "Human Evaluation Economics in Frontier AI"
       ]

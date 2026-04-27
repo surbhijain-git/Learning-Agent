@@ -317,13 +317,6 @@ def _rich(text: str, bold: bool = False, color: str | None = None) -> dict:
     return t
 
 
-def _bar(pct: float, target: int) -> str:
-    filled = round(pct / 2)
-    empty  = 50 - filled
-    arrow  = "▲" if (pct - target) > 2 else ("▼" if (pct - target) < -2 else "≈")
-    return f"{'█' * filled}{'░' * empty}  {pct:.1f}% (target {target}%  {arrow})"
-
-
 def build_notion_blocks(report: dict) -> list[dict]:
     """Build Notion block list for the concentration section."""
     blocks = []
@@ -341,43 +334,64 @@ def build_notion_blocks(report: dict) -> list[dict]:
             "icon": {"type": "emoji", "emoji": "🎯"},
             "color": "gray_background",
             "rich_text": [_rich(
-                f"Generated {report['generated']} · {report['total_entries']} KB entries classified · "
-                "Targets: Who wins 25% · Work change 35% · Who does what 20% · Being built 15% · Risks 5%"
+                f"Generated {report['generated']}  ·  {report['total_entries']} KB entries classified"
             )],
         }
     })
 
-    # One paragraph per category
+    # One heading_3 + bullet block per category
+    EMOJI = {
+        "competitive": "🔵",
+        "practice":    "🟢",
+        "human":       "🟣",
+        "emerging":    "🟡",
+        "risk":        "🔴",
+    }
     for c in report["categories"]:
-        delta_str = f"+{c['delta']:.1f}" if c['delta'] >= 0 else f"{c['delta']:.1f}"
-        status = "on target ✅" if abs(c["delta"]) <= 3 else (
-            f"over-indexed by {abs(c['delta']):.0f}pp ⚠️" if c["delta"] > 0
-            else f"under-indexed by {abs(c['delta']):.0f}pp 📉"
-        )
-        bar = _bar(c["pct"], c["target"])
+        delta    = c["delta"]
+        sign     = "+" if delta >= 0 else ""
+        status   = "on target ✅" if abs(delta) <= 3 else (
+                   f"over-indexed ⚠️" if delta > 0 else "under-indexed 📉")
+        icon     = EMOJI.get(c["id"], "⚪")
+        top3     = "  ·  ".join(c["entries"][:3]) if c["entries"] else "—"
+
+        # Category heading
+        blocks.append({
+            "object": "block", "type": "heading_3",
+            "heading_3": {"rich_text": [
+                _rich(f"{icon}  {c['question']}  —  {c['label']}")
+            ]}
+        })
+        # Stats line
         blocks.append({
             "object": "block", "type": "paragraph",
             "paragraph": {"rich_text": [
-                _rich(f"{c['question']}  ({c['label']})\n", bold=True),
-                _rich(bar + f"\n  {c['count']} entries · {status}"),
+                _rich(f"{c['pct']:.1f}%", bold=True),
+                _rich(f"  actual   |   target {c['target']}%   |   {sign}{delta:.1f}pp   |   {c['count']} entries   |   {status}"),
             ]}
         })
+        # Sample entries as a quote block
+        if c["entries"]:
+            blocks.append({
+                "object": "block", "type": "quote",
+                "quote": {"rich_text": [_rich(top3, color="gray")]}
+            })
 
-    # Recommendation paragraph
+    # Recommendation callout
     over  = [c for c in report["categories"] if c["delta"] > 3]
     under = [c for c in report["categories"] if c["delta"] < -3]
-    recs = []
+    recs  = []
     if over:
-        recs.append("Reduce: " + ", ".join('"' + c['question'] + '"' for c in over))
+        recs.append("Consume less: " + ", ".join(c["question"] for c in over))
     if under:
-        recs.append("Seek more: " + ", ".join('"' + c['question'] + '"' for c in under))
+        recs.append("Seek more: " + ", ".join(c["question"] for c in under))
     if recs:
         blocks.append({
             "object": "block", "type": "callout",
             "callout": {
                 "icon": {"type": "emoji", "emoji": "\U0001f4a1"},
                 "color": "yellow_background",
-                "rich_text": [_rich("Rebalancing nudge: " + " \u00b7 ".join(recs))],
+                "rich_text": [_rich("  ·  ".join(recs))],
             }
         })
     else:
