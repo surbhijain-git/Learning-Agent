@@ -4,6 +4,9 @@ Rubric definition, scoring weights, examples, and the Judge LLM prompt.
 Imported by eval_agent.py.
 """
 
+import json
+from pathlib import Path
+
 # ── Scoring thresholds ────────────────────────────────────────────────────────
 PASS_THRESHOLD   = 3.5
 REVIEW_THRESHOLD = 2.5
@@ -265,6 +268,58 @@ FEW_SHOT_EXAMPLES = [
 ]
 
 
+# ── Load golden dataset ───────────────────────────────────────────────────────
+def _load_golden_dataset() -> list[dict]:
+    """Load human-graded good/bad pairs from golden_dataset.json."""
+    path = Path(__file__).parent / "golden_dataset.json"
+    if not path.exists():
+        return []
+    try:
+        return json.loads(path.read_text())
+    except Exception:
+        return []
+
+
+def _build_golden_block() -> str:
+    """
+    Build a compact 'Good vs Bad' section from the golden dataset.
+    One pair per unique primary dimension — keeps the prompt focused.
+    """
+    examples = _load_golden_dataset()
+    if not examples:
+        return ""
+
+    # One example per primary dimension (first word before newline)
+    seen_dims: set[str] = set()
+    selected = []
+    for ex in examples:
+        primary_dim = ex.get("dimension", "").split("\n")[0].strip()
+        if primary_dim and primary_dim not in seen_dims:
+            seen_dims.add(primary_dim)
+            selected.append(ex)
+
+    block = "\n## Human-Graded Calibration Examples\n"
+    block += (
+        "These good/bad pairs were graded by the user. "
+        "Use them to calibrate your scores — especially for insight_depth, "
+        "novelty_calibration, strategic_relevance, and pipeline_integrity.\n"
+    )
+
+    for ex in selected:
+        primary_dim = ex.get("dimension", "").split("\n")[0].strip()
+        source = ex.get("source", "").split("\n")[0].strip()
+        block += f"\n### [{primary_dim}] Source: {source}\n"
+        block += f"**Scenario:** {ex.get('scenario', '').strip()}\n\n"
+        block += f"**BAD output** (score 1–2 on {primary_dim}):\n"
+        block += ex.get("bad_output", "").strip() + "\n"
+        block += f"*Why bad:* {ex.get('why_bad', '').strip()}\n\n"
+        block += f"**GOOD output** (score 4–5 on {primary_dim}):\n"
+        block += ex.get("good_output", "").strip() + "\n"
+        block += f"*Why good:* {ex.get('why_good', '').strip()}\n"
+
+    return block
+
+
 # ── Build the Judge system prompt ─────────────────────────────────────────────
 def build_judge_prompt() -> str:
     dim_block = "\n".join(
@@ -297,6 +352,8 @@ Scores:
 {scores_str}
 """
 
+    golden_block = _build_golden_block()
+
     return f"""You are a Judge LLM evaluating the output quality of a Content Intelligence Agent.
 The agent ingests YouTube videos, newsletters, and meeting notes, extracts structured knowledge using Claude, and scores novelty against an existing Knowledge Base.
 
@@ -314,8 +371,9 @@ Use these to calibrate your scores. Scores 2 and 4 fall between the anchors.
 - REVIEW: {REVIEW_THRESHOLD} to {PASS_THRESHOLD - 0.01:.2f}
 - FAIL: < {REVIEW_THRESHOLD}
 
-## Examples
+## Scored Examples
 {examples_block}
+{golden_block}
 
 ## Output Format
 Return ONLY valid JSON, no markdown fences:
