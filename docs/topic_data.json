@@ -1,0 +1,99 @@
+{
+  "generated": "2026-04-27",
+  "total_entries": 56,
+  "categories": [
+    {
+      "id": "competitive",
+      "question": "Who wins?",
+      "label": "Competitive Landscape",
+      "target": 25,
+      "count": 30,
+      "pct": 53.6,
+      "delta": 28.6,
+      "color": "#2563eb",
+      "entries": [
+        "Reddit's Monetization Through AI and Authenticity",
+        "Stablecoin Leverage and Regulatory Moats",
+        "Open Source AI Ecosystem Control",
+        "Cursor Enterprise GTM Organization",
+        "AI-Powered Knowledge Work Transformation",
+        "Mobility Platform Transformation Strategy",
+        "AI Talent Democratization and Patient Capital",
+        "Voice AI Agent Evolution",
+        "Infrastructure Control Replaces Model Quality",
+        "Infrastructure Lock-In Over Model Performance"
+      ]
+    },
+    {
+      "id": "practice",
+      "question": "How does work change?",
+      "label": "AI in Practice",
+      "target": 35,
+      "count": 13,
+      "pct": 23.2,
+      "delta": -11.8,
+      "color": "#16a34a",
+      "entries": [
+        "Natural Language Agent Configuration",
+        "Claude Code Context Architecture",
+        "Semantic Skill Loading Architecture",
+        "AI Development Bottleneck Shift",
+        "AI Evaluation Framework Design",
+        "Context Engineering for Knowledge Work",
+        "AI-Powered ERP Modernization Automation",
+        "Claude Model Tiering & Cost Optimization",
+        "AI Capability Discontinuity and Task Mapping",
+        "Enterprise AI Systems Economics"
+      ]
+    },
+    {
+      "id": "human",
+      "question": "Who does what?",
+      "label": "Human & Org Impact",
+      "target": 20,
+      "count": 4,
+      "pct": 7.1,
+      "delta": -12.9,
+      "color": "#7c3aed",
+      "entries": [
+        "AI-Driven Banking Team Restructuring",
+        "AI-Accelerated Product Management Evolution",
+        "Flat Organization Mission-Based Structure",
+        "AI-Driven Workforce Transformation"
+      ]
+    },
+    {
+      "id": "emerging",
+      "question": "What's being built?",
+      "label": "Emerging Space",
+      "target": 15,
+      "count": 5,
+      "pct": 8.9,
+      "delta": -6.1,
+      "color": "#d97706",
+      "entries": [
+        "Token-Incentivized Infrastructure Deployment",
+        "Physics-Based Wearable Innovation",
+        "Edge AI Hardware-Software Economics",
+        "DeepMind's Constraint Removal Strategy",
+        "Human Evaluation Economics in Frontier AI"
+      ]
+    },
+    {
+      "id": "risk",
+      "question": "What could go wrong?",
+      "label": "Risk & Governance",
+      "target": 5,
+      "count": 4,
+      "pct": 7.1,
+      "delta": 2.1,
+      "color": "#dc2626",
+      "entries": [
+        "Epigenetic Reprogramming Regulatory Strategy",
+        "Identity Infrastructure Governance Tensions",
+        "AI Persuasion Asymmetry Politics",
+        "LLM Defensive Persuasion Tactics"
+      ]
+    }
+  ]
+}

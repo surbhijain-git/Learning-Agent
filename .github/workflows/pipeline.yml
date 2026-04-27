@@ -3,6 +3,7 @@ name: Pipeline + Site Update
 on:
   schedule:
     - cron: "0 7 * * *"      # daily at 7am UTC — newsletter sync + granola + ingest queue all in one job
+    - cron: "0 4 * * 0"      # weekly on Sunday 4am UTC — topic concentration report
   workflow_dispatch:          # manual trigger from GitHub UI
 
 jobs:
@@ -90,11 +91,21 @@ jobs:
           NOTION_READING_LIST_ID:   ${{ secrets.NOTION_READING_LIST_ID }}
         run: python generate_site_data.py
 
-      - name: Commit updated data.json and chroma_db
+      - name: Run topic concentration report (weekly — Sundays only)
+        if: github.event.schedule == '0 4 * * 0' || github.event_name == 'workflow_dispatch'
+        env:
+          ANTHROPIC_API_KEY:        ${{ secrets.ANTHROPIC_API_KEY }}
+          NOTION_TOKEN:             ${{ secrets.NOTION_TOKEN }}
+          NOTION_DB_ID:             ${{ secrets.NOTION_DB_ID }}
+          NOTION_PARENT_PAGE_ID:    ${{ secrets.NOTION_PARENT_PAGE_ID }}
+        run: python topic_concentration.py
+        continue-on-error: true   # don't block the pipeline if topic report fails
+
+      - name: Commit updated data.json, chroma_db, and topic data
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/data.json chroma_db/ || true
+          git add docs/data.json docs/topic_data.json chroma_db/ || true
           git diff --staged --quiet || git commit -m "chore: auto-update pipeline data [skip ci]"
           git push
           # logs/ and exports/ are intentionally excluded — they may contain private email/meeting content
