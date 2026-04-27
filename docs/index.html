@@ -462,7 +462,7 @@
   <div class="section-title">Quality Evaluation Loop</div>
   <div class="pipeline-card" style="padding:28px 32px;">
     <p class="pipeline-desc" style="margin-bottom:24px;">
-      A separate Judge LLM (Sonnet) scores every KB entry on 5 dimensions against an anchored rubric — running independently from the extraction pipeline so it can catch failures the extractor wouldn't self-report.
+      A separate Judge LLM (Sonnet) scores every KB entry on <strong>6 dimensions</strong> against an anchored rubric — running independently from the extraction pipeline so it can catch failures the extractor wouldn't self-report. A <strong>human-graded golden dataset</strong> (9 good/bad example pairs across all dimensions) feeds into the judge as few-shot anchors, calibrating scores to real judgments rather than abstract criteria.
     </p>
     <div style="display:grid; grid-template-columns:1fr 80px 1fr; gap:16px; align-items:start;">
 
@@ -492,14 +492,15 @@
       <div>
         <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:var(--purple); margin-bottom:12px;">Eval Agent (Sonnet judge)</div>
         <div style="display:flex; flex-direction:column; gap:8px;">
-          <div class="pnode" style="background:#fdf4ff; border-color:#d8b4fe; color:#7e22ce; text-align:left; min-width:0;">⚖ Judge LLM (Sonnet)<span>reads KB entry + rubric</span></div>
-          <div style="font-size:11px; color:var(--muted); padding-left:8px;">↓ scores 5 dimensions</div>
+          <div class="pnode" style="background:#fdf4ff; border-color:#d8b4fe; color:#7e22ce; text-align:left; min-width:0;">⚖ Judge LLM (Sonnet)<span>reads KB entry + rubric + golden dataset</span></div>
+          <div style="font-size:11px; color:var(--muted); padding-left:8px;">↓ scores 6 dimensions</div>
           <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:10px 14px; font-size:12px;">
             <div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span style="color:var(--muted);">Extraction fidelity</span><span style="font-weight:600;">25%</span></div>
             <div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span style="color:var(--muted);">Insight depth</span><span style="font-weight:600;">30%</span></div>
             <div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span style="color:var(--muted);">Novelty calibration</span><span style="font-weight:600;">20%</span></div>
-            <div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span style="color:var(--muted);">Structural quality</span><span style="font-weight:600;">15%</span></div>
-            <div style="display:flex; justify-content:space-between;"><span style="color:var(--muted);">Strategic relevance</span><span style="font-weight:600;">10%</span></div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span style="color:var(--muted);">Pipeline integrity</span><span style="font-weight:600;">10%</span></div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span style="color:var(--muted);">Structural quality</span><span style="font-weight:600;">10%</span></div>
+            <div style="display:flex; justify-content:space-between;"><span style="color:var(--muted);">Strategic relevance</span><span style="font-weight:600;">5%</span></div>
           </div>
           <div style="font-size:11px; color:var(--muted); padding-left:8px;">↓ weighted score → verdict</div>
           <div style="display:flex; gap:6px;">
@@ -513,7 +514,16 @@
       </div>
 
     </div>
-    <div style="margin-top:20px; padding:12px 16px; background:var(--bg); border-radius:8px; font-size:12px; color:var(--muted);">
+
+    <!-- Golden dataset callout -->
+    <div style="margin-top:20px; padding:14px 16px; background:#faf5ff; border:1px solid #d8b4fe; border-radius:8px; font-size:12px; color:#581c87; display:flex; gap:10px; align-items:flex-start;">
+      <span style="font-size:16px; flex-shrink:0;">📋</span>
+      <div>
+        <strong>Golden Dataset</strong> — 9 human-graded good/bad pairs (Granola · Newsletter · YouTube · Pipeline) cover all 6 dimensions. Each pair shows exactly what a score of 1 vs. 5 looks like on a real example, in the user's own words. The Judge LLM receives these as few-shot anchors before scoring any entry, calibrating against real judgment rather than abstract rubric language. Stored in <code style="background:#ede9fe; padding:1px 5px; border-radius:3px;">eval/golden_dataset.json</code>.
+      </div>
+    </div>
+
+    <div style="margin-top:12px; padding:12px 16px; background:var(--bg); border-radius:8px; font-size:12px; color:var(--muted);">
       Run manually: <code style="background:var(--surface); padding:2px 6px; border-radius:4px; font-size:11px;">python eval/eval_agent.py spot</code> — last 10 entries &nbsp;·&nbsp; <code style="background:var(--surface); padding:2px 6px; border-radius:4px; font-size:11px;">python eval/eval_agent.py weekly</code> — last 7 days
     </div>
   </div>
