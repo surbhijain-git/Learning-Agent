@@ -307,6 +307,7 @@
   <div class="tab-bar">
     <button class="tab-btn active" onclick="switchTab('about', this)">About</button>
     <button class="tab-btn" onclick="switchTab('dashboard', this)">Live Dashboard</button>
+    <button class="tab-btn" onclick="switchTab('workflow', this)">Workflow</button>
     <button class="tab-btn" onclick="switchTab('setup', this)">Setup Guide</button>
     <button class="tab-btn" onclick="switchTab('sample', this)">Sample Output</button>
   </div>
@@ -384,6 +385,59 @@
       </div>
     </div>
   </div>
+
+
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     TAB 2 — ABOUT
+════════════════════════════════════════════════════════════════ -->
+<div id="tab-about" class="tab-panel active">
+<div class="main">
+
+  <div class="about-hero">
+    <h2>A compounding knowledge agent</h2>
+    <p>
+      This solves a problem that gets worse as you become more senior. You consume more content, but retention is low, and you connect less of it to what you already know. Most knowledge is forgotten shortly after consumption — and you keep rediscovering the same ideas again and again over the next few weeks.
+    </p>
+    <p>
+      A professional with the densest, most current knowledge graph in their domain will make decisions better and faster. The agent ingests YouTube videos, newsletters, and PDFs, extracts insights and concepts from each piece of content, and determines the <em>so what</em> for a strategy professional. It then checks every new input against everything already in the knowledge base — surfacing genuinely new information and flagging new angles on things you already know.
+    </p>
+  </div>
+
+  <div class="section-title">Top Features</div>
+  <div class="about-grid" style="margin-bottom:32px; grid-template-columns: repeat(2,1fr);">
+    <div class="about-card">
+      <div class="about-card-icon">🔍</div>
+      <h3>Novelty scoring</h3>
+      <p>Every new input is checked against the full knowledge base using semantic embeddings. Genuinely new content is surfaced. Content you already know is suppressed. New angles on familiar ideas are flagged separately — so your attention always goes to what's actually new to you.</p>
+    </div>
+    <div class="about-card">
+      <div class="about-card-icon">⚡</div>
+      <h3>Structured extraction with a so what</h3>
+      <p>Each source is processed into INSIGHT lines (non-obvious strategic ideas) and LEARN lines (specific named concepts, tools, techniques). Every KB entry includes a <em>so what</em> — what a strategy professional would do differently knowing this.</p>
+    </div>
+    <div class="about-card">
+      <div class="about-card-icon">📊</div>
+      <h3>Topic concentration</h3>
+      <p>A weekly report compares what you are actually reading against your stated learning goals — by category. It flags where you are over-indexed and where you are falling short, so your consumption changes to match your priorities, not just your interests.</p>
+    </div>
+    <div class="about-card">
+      <div class="about-card-icon">✉</div>
+      <h3>Morning digest</h3>
+      <p>A daily email containing only new or new-angle content. Nothing you already know appears. Two sections: 🟢 New to You and 🟡 New Angles on Known Topics. Signal only — no noise.</p>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     TAB 3 — WORKFLOW
+════════════════════════════════════════════════════════════════ -->
+<div id="tab-workflow" class="tab-panel">
+<div class="main">
 
   <div class="section-title">How It Works</div>
   <div class="pipeline-card">
@@ -528,114 +582,13 @@
     </div>
   </div>
 
-
 </div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════
-     TAB 2 — ABOUT
+     TAB 4 — SETUP GUIDE
 ════════════════════════════════════════════════════════════════ -->
-<div id="tab-about" class="tab-panel active">
-<div class="main">
 
-  <div class="about-hero">
-    <h2>What is the Content Intelligence Agent?</h2>
-    <p>
-      A personal AI system that reads what you read — YouTube videos, newsletters, PDFs, and meeting notes — and builds a structured knowledge base so you actually retain and use what you learn.
-    </p>
-    <p>
-      Most knowledge workers consume far more than they process. Content gets saved, skimmed, or forgotten. This agent turns passive consumption into an indexed, searchable, deduplicated knowledge store — and surfaces only genuinely new information each day, skipping anything you already know.
-    </p>
-    <p>
-      The architecture is designed for AI and strategy knowledge but can be adapted to any domain.
-    </p>
-  </div>
-
-  <div class="section-title">The Problem It Solves</div>
-  <div class="problem-solution" style="margin-bottom:32px;">
-    <div class="ps-card problem">
-      <h3>Without this agent</h3>
-      <ul>
-        <li>Save videos to "watch later" — never watch them</li>
-        <li>Read the same concept across 5 newsletters, never notice the overlap</li>
-        <li>Can't recall where you learned something or what the key claim was</li>
-        <li>No way to know if a new source adds genuine value vs. repeats what you already know</li>
-        <li>Morning reading ritual produces no lasting structure</li>
-      </ul>
-    </div>
-    <div class="ps-card solution">
-      <h3>With this agent</h3>
-      <ul>
-        <li>Every source is processed into structured claims and concepts</li>
-        <li>Novelty scoring flags what's genuinely new vs. already covered</li>
-        <li>Knowledge Base is searchable and permanently indexed in Notion</li>
-        <li>Morning email surfaces only new or related content — nothing you've seen</li>
-        <li>Eval agent scores extraction quality so you know the KB is reliable</li>
-      </ul>
-    </div>
-  </div>
-
-  <div class="section-title">Core Capabilities</div>
-  <div class="about-grid" style="margin-bottom:32px;">
-    <div class="about-card">
-      <div class="about-card-icon">🔄</div>
-      <h3>Multi-source ingestion</h3>
-      <p>YouTube videos (transcript + Whisper fallback), Gmail newsletters, PDFs, and Granola meeting notes — all processed through a single Notion-based queue.</p>
-    </div>
-    <div class="about-card">
-      <div class="about-card-icon">🧠</div>
-      <h3>Tiered Claude extraction</h3>
-      <p>Haiku handles chunk-level extraction at low cost. Sonnet or Opus aggregates based on content length. Model selection is a performance optimization, not a capability one.</p>
-    </div>
-    <div class="about-card">
-      <div class="about-card-icon">🔍</div>
-      <h3>Semantic novelty scoring</h3>
-      <p>ChromaDB with all-MiniLM-L6-v2 embeddings scores each new entry against existing KB — doc-level and claim-level — to produce a NEW / RELATED / COVERED verdict.</p>
-    </div>
-    <div class="about-card">
-      <div class="about-card-icon">📋</div>
-      <h3>Structured knowledge output</h3>
-      <p>Every entry produces: a topic-label title, 2–3 sentence summary, 3–5 specific non-obvious claims, concrete learnings (named tools, frameworks), and concept tags.</p>
-    </div>
-    <div class="about-card">
-      <div class="about-card-icon">✉</div>
-      <h3>Morning digest</h3>
-      <p>Daily 8am email with two sections: 🟢 New to You (genuinely novel) and 🟡 New Angles (related, adds perspective). COVERED entries are silently skipped.</p>
-    </div>
-    <div class="about-card">
-      <div class="about-card-icon">⚖</div>
-      <h3>Judge LLM eval</h3>
-      <p>A separate Sonnet-based evaluator scores KB entries on 5 dimensions — extraction fidelity, insight depth, novelty calibration, structural quality, and strategic relevance — with anchored 1/3/5 rubric.</p>
-    </div>
-  </div>
-
-  <div class="section-title">Expertise Codified</div>
-  <div class="pipeline-card" style="padding:28px 32px;">
-    <p style="font-size:14px; color:var(--muted); line-height:1.7; max-width:780px;">
-      The agent encodes three layers of judgment that can't be replicated by a simple summarizer:
-    </p>
-    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:20px; margin-top:20px;">
-      <div>
-        <div style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--accent); margin-bottom:8px;">What to extract</div>
-        <p style="font-size:13px; color:var(--muted); line-height:1.6;">The INSIGHT/LEARN extraction prompts are tuned to surface non-obvious strategic claims — not summaries anyone could write, but the specific mechanisms and data points a strategy consultant would cite.</p>
-      </div>
-      <div>
-        <div style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--accent); margin-bottom:8px;">What counts as new</div>
-        <p style="font-size:13px; color:var(--muted); line-height:1.6;">Novelty thresholds (COVERED ≥ 0.65, RELATED ≥ 0.20 doc-level; COVERED ≥ 0.68, RELATED ≥ 0.18 claim-level) are applied to domain-normalized scores where 0.0 = same broad AI topic and 1.0 = identical content. Near-duplicate angles still count as RELATED if they add a meaningful new lens.</p>
-      </div>
-      <div>
-        <div style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--accent); margin-bottom:8px;">What's worth keeping</div>
-        <p style="font-size:13px; color:var(--muted); line-height:1.6;">The eval rubric's strategic_relevance dimension encodes domain-specific target roles (AI strategy, GTM, product, consulting) as the filter — not generic "is this AI content?" but "would this move a role-relevant conversation forward?"</p>
-      </div>
-    </div>
-  </div>
-
-</div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════════
-     TAB 3 — SETUP GUIDE
-════════════════════════════════════════════════════════════════ -->
 <div id="tab-setup" class="tab-panel">
 <div class="main">
 
@@ -779,7 +732,7 @@ python eval/eval_agent.py weekly           # score everything from the past 7 da
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════
-     TAB 4 — SAMPLE OUTPUT
+     TAB 5 — SAMPLE OUTPUT
 ════════════════════════════════════════════════════════════════ -->
 <div id="tab-sample" class="tab-panel">
 <div class="main">
