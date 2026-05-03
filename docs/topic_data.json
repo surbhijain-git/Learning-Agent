@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-27",
+  "generated": "2026-05-03",
   "total_entries": 56,
   "categories": [
     {
@@ -7,9 +7,9 @@
       "question": "Who wins?",
       "label": "Competitive Landscape",
       "target": 25,
-      "count": 28,
-      "pct": 50.0,
-      "delta": 25.0,
+      "count": 29,
+      "pct": 51.8,
+      "delta": 26.8,
       "color": "#2563eb",
       "entries": [
         "Reddit's Monetization Through AI and Authenticity",
@@ -29,9 +29,9 @@
       "question": "How does work change?",
       "label": "AI in Practice",
       "target": 35,
-      "count": 14,
-      "pct": 25.0,
-      "delta": -10.0,
+      "count": 13,
+      "pct": 23.2,
+      "delta": -11.8,
       "color": "#16a34a",
       "entries": [
         "Natural Language Agent Configuration",
@@ -43,7 +43,7 @@
         "AI-Powered ERP Modernization Automation",
         "Claude Model Tiering & Cost Optimization",
         "AI Capability Discontinuity and Task Mapping",
-        "Operational Depth vs Model Commoditization"
+        "Enterprise AI Systems Economics"
       ]
     },
     {
