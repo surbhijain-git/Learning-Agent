@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-10",
+  "generated": "2026-05-17",
   "total_entries": 56,
   "categories": [
     {
@@ -12,16 +12,16 @@
       "delta": 28.6,
       "color": "#2563eb",
       "entries": [
-        "Reddit's Monetization Through AI and Authenticity",
-        "Stablecoin Leverage and Regulatory Moats",
-        "Open Source AI Ecosystem Control",
-        "Cursor Enterprise GTM Organization",
-        "AI-Powered Knowledge Work Transformation",
-        "Mobility Platform Transformation Strategy",
-        "AI Talent Democratization and Patient Capital",
-        "Voice AI Agent Evolution",
-        "Infrastructure Control Replaces Model Quality",
-        "Infrastructure Lock-In Over Model Performance"
+        "Programmable Money and Market Democratization",
+        "Platform Economics in Synthetic Biology",
+        "Control Layer Economics and Workflow Ownership",
+        "Infrastructure Control Over Model Performance",
+        "AI Competitive Moats Beyond Models",
+        "AI Value Realization Constraints",
+        "AI Competitive Moats Shift to Distribution",
+        "Execution Layer Infrastructure Moats",
+        "AI Conversion Layer Competition",
+        "Interface Layer Control Shift"
       ]
     },
     {
@@ -34,16 +34,16 @@
       "delta": -13.6,
       "color": "#16a34a",
       "entries": [
-        "Natural Language Agent Configuration",
-        "Claude Code Context Architecture",
-        "Semantic Skill Loading Architecture",
-        "AI Development Bottleneck Shift",
-        "AI Evaluation Framework Design",
-        "Context Engineering for Knowledge Work",
-        "AI-Powered ERP Modernization Automation",
-        "Claude Model Tiering & Cost Optimization",
+        "Meeting Notes as Integration Validation",
+        "Autonomous Agent Evaluation Methodology",
+        "AI Capability Discontinuity and Task Mapping",
+        "Context Window Architecture Constraints",
         "Enterprise AI Systems Economics",
-        "Context Window Architecture Constraints"
+        "Claude Model Tiering & Cost Optimization",
+        "AI Development Bottleneck Shift",
+        "Semantic Skill Loading Architecture",
+        "Claude Code Context Architecture",
+        "AI-Powered ERP Modernization Automation"
       ]
     },
     {
@@ -56,11 +56,11 @@
       "delta": -11.1,
       "color": "#7c3aed",
       "entries": [
-        "AI-Driven Banking Team Restructuring",
         "AI-Accelerated Product Management Evolution",
-        "Flat Organization Mission-Based Structure",
         "AI-Driven Workforce Transformation",
-        "AI Capability Discontinuity and Task Mapping"
+        "AI-Driven Banking Team Restructuring",
+        "Flat Organization Mission-Based Structure",
+        "AI Talent Democratization and Patient Capital"
       ]
     },
     {
@@ -68,16 +68,15 @@
       "question": "What's being built?",
       "label": "Emerging Space",
       "target": 15,
-      "count": 5,
-      "pct": 8.9,
-      "delta": -6.1,
+      "count": 4,
+      "pct": 7.1,
+      "delta": -7.9,
       "color": "#d97706",
       "entries": [
         "Token-Incentivized Infrastructure Deployment",
-        "Physics-Based Wearable Innovation",
         "Edge AI Hardware-Software Economics",
-        "DeepMind's Constraint Removal Strategy",
-        "Human Evaluation Economics in Frontier AI"
+        "Physics-Based Wearable Innovation",
+        "DeepMind's Constraint Removal Strategy"
       ]
     },
     {
@@ -85,15 +84,16 @@
       "question": "What could go wrong?",
       "label": "Risk & Governance",
       "target": 5,
-      "count": 4,
-      "pct": 7.1,
-      "delta": 2.1,
+      "count": 5,
+      "pct": 8.9,
+      "delta": 3.9,
       "color": "#dc2626",
       "entries": [
-        "Epigenetic Reprogramming Regulatory Strategy",
-        "Identity Infrastructure Governance Tensions",
+        "Human Evaluation Economics in Frontier AI",
+        "LLM Defensive Persuasion Tactics",
         "AI Persuasion Asymmetry Politics",
-        "LLM Defensive Persuasion Tactics"
+        "Epigenetic Reprogramming Regulatory Strategy",
+        "Identity Infrastructure Governance Tensions"
       ]
     }
   ]
