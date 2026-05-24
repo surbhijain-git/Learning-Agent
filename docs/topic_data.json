@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-17",
+  "generated": "2026-05-24",
   "total_entries": 56,
   "categories": [
     {
@@ -7,43 +7,32 @@
       "question": "Who wins?",
       "label": "Competitive Landscape",
       "target": 25,
-      "count": 30,
-      "pct": 53.6,
-      "delta": 28.6,
+      "count": 0,
+      "pct": 0.0,
+      "delta": -25.0,
       "color": "#2563eb",
-      "entries": [
-        "Programmable Money and Market Democratization",
-        "Platform Economics in Synthetic Biology",
-        "Control Layer Economics and Workflow Ownership",
-        "Infrastructure Control Over Model Performance",
-        "AI Competitive Moats Beyond Models",
-        "AI Value Realization Constraints",
-        "AI Competitive Moats Shift to Distribution",
-        "Execution Layer Infrastructure Moats",
-        "AI Conversion Layer Competition",
-        "Interface Layer Control Shift"
-      ]
+      "entries": []
     },
     {
       "id": "practice",
       "question": "How does work change?",
       "label": "AI in Practice",
       "target": 35,
-      "count": 12,
-      "pct": 21.4,
-      "delta": -13.6,
+      "count": 56,
+      "pct": 100.0,
+      "delta": 65.0,
       "color": "#16a34a",
       "entries": [
         "Meeting Notes as Integration Validation",
+        "Human Evaluation Economics in Frontier AI",
+        "Programmable Money and Market Democratization",
         "Autonomous Agent Evaluation Methodology",
-        "AI Capability Discontinuity and Task Mapping",
-        "Context Window Architecture Constraints",
-        "Enterprise AI Systems Economics",
-        "Claude Model Tiering & Cost Optimization",
-        "AI Development Bottleneck Shift",
-        "Semantic Skill Loading Architecture",
-        "Claude Code Context Architecture",
-        "AI-Powered ERP Modernization Automation"
+        "Platform Economics in Synthetic Biology",
+        "Control Layer Economics and Workflow Ownership",
+        "Infrastructure Control Over Model Performance",
+        "AI Competitive Moats Beyond Models",
+        "AI Value Realization Constraints",
+        "AI Competitive Moats Shift to Distribution"
       ]
     },
     {
@@ -51,50 +40,33 @@
       "question": "Who does what?",
       "label": "Human & Org Impact",
       "target": 20,
-      "count": 5,
-      "pct": 8.9,
-      "delta": -11.1,
+      "count": 0,
+      "pct": 0.0,
+      "delta": -20.0,
       "color": "#7c3aed",
-      "entries": [
-        "AI-Accelerated Product Management Evolution",
-        "AI-Driven Workforce Transformation",
-        "AI-Driven Banking Team Restructuring",
-        "Flat Organization Mission-Based Structure",
-        "AI Talent Democratization and Patient Capital"
-      ]
+      "entries": []
     },
     {
       "id": "emerging",
       "question": "What's being built?",
       "label": "Emerging Space",
       "target": 15,
-      "count": 4,
-      "pct": 7.1,
-      "delta": -7.9,
+      "count": 0,
+      "pct": 0.0,
+      "delta": -15.0,
       "color": "#d97706",
-      "entries": [
-        "Token-Incentivized Infrastructure Deployment",
-        "Edge AI Hardware-Software Economics",
-        "Physics-Based Wearable Innovation",
-        "DeepMind's Constraint Removal Strategy"
-      ]
+      "entries": []
     },
     {
       "id": "risk",
       "question": "What could go wrong?",
       "label": "Risk & Governance",
       "target": 5,
-      "count": 5,
-      "pct": 8.9,
-      "delta": 3.9,
+      "count": 0,
+      "pct": 0.0,
+      "delta": -5.0,
       "color": "#dc2626",
-      "entries": [
-        "Human Evaluation Economics in Frontier AI",
-        "LLM Defensive Persuasion Tactics",
-        "AI Persuasion Asymmetry Politics",
-        "Epigenetic Reprogramming Regulatory Strategy",
-        "Identity Infrastructure Governance Tensions"
-      ]
+      "entries": []
     }
   ]
 }
